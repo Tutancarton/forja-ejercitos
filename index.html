@@ -728,7 +728,7 @@ abbr.rtip{text-decoration:underline dotted;text-underline-offset:2px;cursor:help
 
 <script>window.FORJA_APP=true</script>
 <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="vendor/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 /* ===================== state & storage ===================== */
@@ -2910,7 +2910,7 @@ function rowOf(l){ return {id:l.id, army_id:l.armyId||'', nombre:l.name||'', dat
 async function pushList(id){
   const l=S.lists[id]; if(!l || !A.user || !sb) return;
   const {error} = await sb.from('listas').upsert(rowOf(l));
-  if(error){ A.sync='sin conexión, se reintentará'; note() } else if(A.sync){ A.sync=''; note() }
+  if(error){ A.sync='no se pudo guardar'; A.lastErr=error.message||String(error); note(); toast('No se pudo guardar en tu cuenta: '+A.lastErr,6000); console.error('Forja · guardar',error) } else if(A.sync){ A.sync=''; A.lastErr=null; note() }
 }
 saveList = function(l){ _save(l); if(!A.user) return; clearTimeout(tm[l.id]); tm[l.id]=setTimeout(()=>pushList(l.id),800) };
 deleteList = async function(id){ await _del(id); if(A.user && sb){ const {error}=await sb.from('listas').delete().eq('id',id); if(error) toast('No se pudo borrar la lista de tu cuenta. Revisa la conexión.') } };
@@ -2922,7 +2922,7 @@ async function syncAll(){
   if(!A.user || !sb) return;
   A.sync='sincronizando…'; note();
   const {data, error} = await sb.from('listas').select('id,datos');
-  if(error){ A.sync='no se pudo sincronizar'; note(); return }
+  if(error){ A.sync='no se pudo sincronizar'; A.lastErr=error.message||String(error); note(); toast('No se pudo leer tu cuenta: '+A.lastErr,6000); console.error('Forja · sincronizar',error); return }
   const remote = {}; for(const r of data||[]) if(r?.datos) remote[r.id]=r.datos;
   const local = S.lists||{}; const merged = {...remote}; const toPush=[];
   for(const id in local){ const l=local[id]; if(!l?.entries?.length) continue;
@@ -2946,7 +2946,7 @@ function modalHTML(){
   if(!sb) return `<h3>Mi cuenta</h3><p>Las cuentas no están disponibles ahora mismo (sin conexión). Tus listas se siguen guardando en este navegador.</p><div class="row"><button class="btn" data-fa="close">Cerrar</button></div>`;
   if(A.user) return `<h3>Mi cuenta</h3>
     <p>Has entrado como <b>${escH(A.user.email)}</b>.</p>
-    <p class="small muted">Tus listas y tu colección se guardan en tu cuenta. Entra con el mismo email y contraseña en cualquier ordenador o móvil para verlas.</p>
+    ${A.lastErr?`<p class="fa-err">Último error al guardar: ${escH(A.lastErr)}</p>`:''}<p class="small muted">Tus listas y tu colección se guardan en tu cuenta. Entra con el mismo email y contraseña en cualquier ordenador o móvil para verlas.</p>
     <div class="row"><button class="btn" data-fa="logout">Cerrar sesión</button><button class="btn pri" data-fa="close">Listo</button></div>`;
   return `<h3>${A.mode==='up'?'Crear una cuenta gratuita':'Entrar en tu cuenta'}</h3>
     <p class="small muted">Con una cuenta, tus listas y tu colección se guardan en la nube y las tienes en cualquier dispositivo. Es gratis. Sin cuenta, todo se guarda solo en este navegador.</p>
@@ -3013,7 +3013,7 @@ render = function(){ _render(); if(!document.getElementById('acctBtn')) setup();
 if(sb){
   sb.auth.onAuthStateChange((ev, session)=>{
     const was=A.user?.id; A.user=session?.user||null; note();
-    if(A.user && A.user.id!==was) syncAll();
+    if(A.user && A.user.id!==was) syncAll().catch(e=>{ A.lastErr=e?.message||String(e); toast('Error al sincronizar: '+A.lastErr,6000) });
   });
 }
 
