@@ -1,0 +1,29 @@
+{
+ "name": "Forja de Ejércitos",
+ "short_name": "La Forja",
+ "description": "Constructor de listas para Warhammer Fantasy 7ª edición, hecho por fans.",
+ "lang": "es",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#141414",
+ "theme_color": "#141414",
+ "icons": [
+  {
+   "src": "icons/forja-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/forja-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/forja-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
