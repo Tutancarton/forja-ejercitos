@@ -8,6 +8,7 @@ Constructor gratuito de listas para **Warhammer Fantasy 7ª edición**, hecho po
 - Listas sugeridas para torneo y contra cada rival.
 - Cuenta gratuita opcional para guardar tus listas y tu colección en la nube.
 - Se puede instalar en el móvil o el ordenador y funciona sin conexión.
+- Acceso directo para el escritorio (Windows y Mac): [descargar](https://tutancarton.github.io/forja-ejercitos/descargas/Acceso-directo-Forja.zip)
 
 ---
 
