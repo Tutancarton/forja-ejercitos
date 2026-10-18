@@ -1692,10 +1692,14 @@ async function sugFallback(army,why){
   const sameV=r=>(r.variant||null)===(army.variant?.id||null);
   if(!pool.length) pool=lib.filter(r=>sameV(r) && r.kind===kind && Number(r.points)===pts && !r.coll);
   if(!pool.length) pool=lib.filter(r=>sameV(r) && Number(r.points)===pts && !r.coll);
-  if(!pool.length){ sg.error=why+' Inténtalo de nuevo más tarde o crea la lista tú mismo.'; return false }
+  if(!pool.length){ const std=[1000,2000,3000,4000]; const baseHas=lib.some(r=>!r.variant && Number(r.points)===pts);
+    if(army.variant && baseHas) sg.error=`Todavía no hay listas preparadas para «${army.variant.short||army.variant.name}». Elige «Libro de ejército» para ver las listas sugeridas, o crea la lista tú mismo.`;
+    else if(!std.includes(pts)) sg.error=`Las listas preparadas son de 1000, 2000, 3000 y 4000 puntos. Elige uno de esos valores o crea la lista tú mismo.`;
+    else sg.error=why+' Inténtalo de nuevo más tarde o crea la lista tú mismo.';
+    return false }
   const r=pool[Math.floor(Math.random()*pool.length)];
   const L=sugToList({unidades:r.units,nombre:r.name},army,Number(r.points)); if(S.homeSrc==='coleccion') L.useColl=true;
-  sg.result={list:L,plan:r.plan||'',why:r.why||[],libId:r.id}; sg.error=null; sg.notice=why+' Te propongo una lista ya preparada.'; return true;
+  sg.result={list:L,plan:r.plan||'',why:r.why||[],libId:r.id}; sg.error=null; sg.notice=window.FORJA_APP?null:why+' Te propongo una lista ya preparada.'; return true;
 }
 function suggestHTML(army,c){
   const sg=S.sug||{}; const kind=sg.kind||'torneo';
@@ -1705,7 +1709,7 @@ function suggestHTML(army,c){
 
   h+=`<div class="row"><button class="btn pri" data-a="sugGo" ${(!ready||sg.busy)?'disabled':''}>${sg.busy?'Pensando la lista…':(sg.result?'Sugerir otra':'Sugerir lista')} ›</button>
       ${sg.busy?`<button class="btn" data-a="sugStop">Parar</button>`:''}</div>
-    <p class="small muted" style="margin:0">La Forja propone la lista con las unidades y opciones de este libro, calcula los puntos con los costes oficiales y comprueba las reglas. La primera vez puede pedirte permiso.</p>`;
+    <p class="small muted" style="margin:0">${window.FORJA_APP?'La Forja te propone una de sus listas preparadas (1000, 2000, 3000 y 4000 puntos), con los costes oficiales y las reglas comprobadas. Pulsa «Sugerir otra» para ver más.':'La Forja propone la lista con las unidades y opciones de este libro, calcula los puntos con los costes oficiales y comprueba las reglas. La primera vez puede pedirte permiso.'}</p>`;
   if(sg.busy) h+=`<p class="note">${esc(sg.progress||'Pensando…')}</p>`;
   if(sg.error) h+=`<p class="note warn">${esc(sg.error)}</p>`;
   if(sg.notice && sg.result && !sg.busy) h+=`<p class="note">${esc(sg.notice)}</p>`;
