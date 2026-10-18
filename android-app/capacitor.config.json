@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.tutancarton.forja",
+  "appName": "La Forja",
+  "webDir": "www",
+  "server": {
+    "url": "https://tutancarton.github.io/forja-ejercitos/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#141414"
+  }
+}
