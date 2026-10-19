@@ -397,7 +397,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance
 .wrap{max-width:1360px;margin:0 auto}
 
 /* header */
-header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding-block:10px 0}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--paper);border-bottom:1px solid var(--line);padding-block:10px 0}
 .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .brand h1{font-size:1.65rem;color:var(--accent)}
 .brand .sub{color:var(--muted);font-size:.9rem}
@@ -468,12 +468,14 @@ nav.tabs .tab-all{margin-left:auto;padding:0 4px 0 18px;border-bottom:0;display:
 .banner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px 14px;margin-top:6px}
 .banner{position:relative;display:flex;flex-direction:column;align-items:stretch;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:center}
 .bn-pole{height:8px;border-radius:4px;background:linear-gradient(#8a7a5a,#5a4a30);margin:0 -6px}
-.bn-cloth{display:flex;flex-direction:column;align-items:center;gap:6px;height:212px;box-sizing:border-box;overflow:hidden;padding:16px 12px 40px;background:var(--c);color:#fff;
+.bn-cloth{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:212px;height:auto;box-sizing:border-box;overflow:hidden;padding:16px 10px calc(18% + 22px);background:var(--c);color:#fff;
   clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);transition:transform .15s ease}
 .banner:hover .bn-cloth,.banner:focus-visible .bn-cloth{transform:translateY(3px)}
 .banner:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 .bn-icon{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));margin:-4px 0 2px}
-.bn-name{font-family:var(--f-display);font-size:1.2rem;line-height:1.1;min-height:2.2em;display:flex;align-items:center;justify-content:center}
+@media (max-width:700px){header.top{position:relative}}
+.bn-name{font-family:var(--f-display);font-size:1.2rem;line-height:1.1;min-height:2.2em;display:flex;align-items:center;justify-content:center;overflow-wrap:anywhere;hyphens:auto}
+@media (max-width:480px){.bn-tag,.bn-paren{display:none!important}.bn-name{min-height:2.2em}.bn-cloth{min-height:168px!important}.banner-grid{gap:16px 10px}.bn-cloth{padding:12px 8px calc(18% + 20px);gap:4px}.bn-icon{width:52px;height:52px;flex:none}.bn-name{font-size:1.05rem}.bn-tag{font-size:.72rem}.bn-wip{font-size:.56rem;letter-spacing:.02em;white-space:nowrap;padding:2px 5px}}
 .bn-tag{font-size:.78rem;font-style:italic;opacity:.85;min-height:2.6em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .banner.wip .bn-cloth{position:relative;background:repeating-linear-gradient(-45deg,#F2C200 0 9px,#141414 9px 18px);box-shadow:none}
 .banner.wip .bn-inner{position:absolute;inset:7px 7px 0 7px;background:var(--c);clip-path:polygon(0 0,100% 0,100% calc(100% - 17px),50% calc(82% - 6px),0 calc(100% - 17px));z-index:0}
@@ -1616,7 +1618,7 @@ function viewHome(){
         if(a.wip) return `<button class="banner wip" data-a="wipArmy" data-v="${esc(a.id)}" style="--c:${c}" title="En construcción">
           <span class="bn-pole"></span><span class="bn-cloth"><span class="bn-inner"></span>${facIcon(a)?`<img class="bn-icon" src="${facIcon(a)}" alt="">`:''}<span class="bn-name">${esc(a.name)}</span><span class="bn-wip">En construcción</span></span></button>`;
         return `<button class="banner" data-a="homeArmy" data-v="${esc(a.id)}" style="--c:${c}">
-          <span class="bn-pole"></span><span class="bn-cloth">${facIcon(a)?`<img class="bn-icon" src="${facIcon(a)}" alt="">`:''}<span class="bn-name">${esc(a.name)}</span><span class="bn-tag">${esc(ARMY_TAG[a.theme]||'Libro de ejército')}</span>
+          <span class="bn-pole"></span><span class="bn-cloth">${facIcon(a)?`<img class="bn-icon" src="${facIcon(a)}" alt="">`:''}<span class="bn-name">${esc(a.name).replace(/\s*(\([^)]*\))/,'<span class="bn-paren"> $1</span>')}</span><span class="bn-tag">${esc(ARMY_TAG[a.theme]||'Libro de ejército')}</span>
           </span>${(a.variants||[]).length?`<span class="bn-var" title="Incluye ${a.variants.length} lista${a.variants.length>1?'s':''} oficial${a.variants.length>1?'es':''} alternativa${a.variants.length>1?'s':''}" aria-label="Incluye listas alternativas">❖</span>`:''}${n?`<span class="bn-lists" title="Tienes ${n} lista${n>1?'s':''} guardada${n>1?'s':''}" aria-label="${n} lista${n>1?'s':''} guardada${n>1?'s':''}">★</span>`:''}</button>`}).join('')}</div></div>`;
   }
   const c=ARMY_COL[sel.theme]||'#5A5A5A'; const mine=listsOf(sel.id); const mode=S.homeMode||'propia';
