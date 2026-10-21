@@ -693,7 +693,13 @@ table.ed input.st{width:46px;min-width:46px;text-align:center}
 .sharebar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px;padding:6px 0 0;font-size:.82rem;color:var(--muted)}
 .sb-ok{color:var(--ok);font-weight:700;margin-right:auto}
 .sharebar .sb-chk{display:inline-flex;align-items:center;gap:3px;margin-right:4px;cursor:pointer}
+.upd-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:8px;padding:8px 10px;margin:4px 0 8px;font-size:.92rem}
+.upd-bar[hidden]{display:none!important}
+.upd-bar .upd-n{color:var(--muted)}
 abbr.rtip{text-decoration:underline dotted;text-underline-offset:2px;cursor:help}
+abbr.rtip[data-pop]{-webkit-tap-highlight-color:transparent}
+.rtip-pop{position:fixed;z-index:1000;max-width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1.5px solid var(--accent);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:var(--f-body);font-size:.88rem;line-height:1.35;text-align:left}
+.rtip-pop b{display:block;color:var(--accent);margin-bottom:3px;font-size:.92rem}
 .gloss{margin-top:18px;border-top:2px solid var(--accent);padding-top:6px}.gloss h3{margin:0 0 6px}.gloss p{margin:4px 0;font-size:.88rem}
 .sb-chks{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px}
 .sb-icons{display:inline-flex;align-items:center;gap:4px}
@@ -738,6 +744,7 @@ abbr.rtip{text-decoration:underline dotted;text-underline-offset:2px;cursor:help
 
 <header class="top">
   <div class="wrap">
+    <div id="updBar" class="upd-bar" role="status" hidden><span>🔄 <b>Hay una nueva versión de la Forja</b><span class="upd-n"></span></span><button id="updBtn" class="btn primary" type="button">Actualizar</button></div>
     <div class="brand"><h1>Forja de Ejércitos</h1><span class="sub">Warhammer Fantasy Battles</span><select id="edSel" class="ed-sel" aria-label="Edición del juego" title="Edición del juego"><option value="7">7ª edición</option><option value="tow">The Old World</option></select><span class="sub" id="storeNote"></span><button class="guide-btn" data-a="guide" title="Guía de uso de la Forja"><span aria-hidden="true">?</span> Guía</button><span class="claude-wrap" id="claudeWrap"><button class="claude-btn" data-a="claudeTip" aria-describedby="claudeTip" title="Ventajas de usar la Forja con una cuenta de Claude"><span class="cl-mark" aria-hidden="true">✳</span> Claude</button><span class="claude-tip" id="claudeTip" role="tooltip"><p class="cl-on" id="claudeOn" hidden>✔ Ya estás usando la Forja con tu cuenta de Claude: tus listas se guardan en tu cuenta.</p><h4>Saca todo el partido con una cuenta gratuita de Claude</h4>La Forja funciona sin cuenta, pero si la abres con tu cuenta de Claude (gratis) podrás:<ul><li><b>Pedir listas nuevas a medida</b>: por puntos, contra un rival concreto o solo con las miniaturas de tu colección.</li><li><b>Guardar tus listas y tu colección</b> en tu cuenta y recuperarlas desde cualquier ordenador o móvil.</li><li><b>Ver al momento los libros y listas sugeridas nuevas</b> que se vayan añadiendo.</li><li><b>Ayudar a la comunidad</b>: tus listas sugeridas pasan a la biblioteca común para otros jugadores.</li></ul>Las peticiones a la Forja usan tu propia cuenta y cuentan dentro de sus límites de uso. Las listas de base están disponibles para todos, con o sin cuenta.<br><a href="https://claude.ai" target="_blank" rel="noopener">Crear una cuenta gratuita en claude.ai ›</a></span></span><button class="tab-edit" data-a="editAsk" id="tabEditor" hidden title="Editar libros de ejército (solo editores)"><span>Libros de ejército</span></button></div>
     <nav class="tabs" id="tabs">
       <button data-tab="inicio" aria-current="true">Inicio</button>
@@ -2796,7 +2803,19 @@ function listGlossary(list,army){
 function glossText(list,army){ const g=listGlossary(list,army); return g.length?'\n\nREGLAS ESPECIALES Y TÉRMINOS CLAVE\n'+g.map(x=>`• ${x.name}: ${x.desc||'ver libro de ejército'}`).join('\n'):'' }
 function spellText(list,army){ const ls=spellLores(list,army); return ls.length?'\n\nHECHIZOS\n'+ls.map(l=>`${l.name}\n`+l.spells.map((sp,i)=>`  ${SP_NUM(l,i)}. ${sp.name} (${sp.cv})${sp.range?' · '+sp.range:''}: ${sp.fx||''}`).join('\n')).join('\n'):'' }
 function glossTip(term,aid){ const g=glossFind(term,aid); return g?g[1]:'' }
-function rulesHTML(str,aid){ aid=aid||armyOf(curList())?.id; return splitRules(str).map(r=>{ const d=glossTip(r,aid); return d?`<abbr class="rtip" title="${esc(d)}">${esc(r)}</abbr>`:esc(r) }).join(', ') }
+function rulesHTML(str,aid){ aid=aid||armyOf(curList())?.id; return splitRules(str).map(r=>{ const d=glossTip(r,aid); return d?`<abbr class="rtip"${isTOW(S.armies[aid])?' data-pop="1" tabindex="0"':''} title="${esc(d)}">${esc(r)}</abbr>`:esc(r) }).join(', ') }
+(function(){ let tip=null, cur=null, at=0;
+  function hide(){ if(tip){ tip.remove(); tip=null } if(cur&&cur.dataset.t) cur.title=cur.dataset.t; cur=null }
+  function show(el){ if(cur===el) return; hide(); const t=el.title||el.dataset.t; if(!t) return; el.dataset.t=t; el.removeAttribute('title'); cur=el; at=Date.now();
+    tip=document.createElement('div'); tip.className='rtip-pop'; tip.setAttribute('role','tooltip'); const b=document.createElement('b'); b.textContent=el.textContent; const d=document.createElement('div'); d.textContent=t; tip.append(b,d); document.body.appendChild(tip);
+    const r=el.getBoundingClientRect(), w=tip.offsetWidth, h=tip.offsetHeight; const x=Math.min(Math.max(8,r.left+r.width/2-w/2), innerWidth-w-8); let y=r.bottom+6; if(y+h>innerHeight-8) y=Math.max(8,r.top-h-6); tip.style.left=x+'px'; tip.style.top=y+'px' }
+  const pop=e=>e.target.closest?.('abbr.rtip[data-pop]');
+  document.addEventListener('pointerover',e=>{ if(e.pointerType!=='mouse') return; const el=pop(e); if(el) show(el); else if(cur && !e.target.closest?.('.rtip-pop')) hide() });
+  document.addEventListener('click',e=>{ const el=pop(e); if(el){ e.preventDefault(); e.stopPropagation(); if(cur===el && Date.now()-at>400) hide(); else show(el); return } if(cur && !e.target.closest?.('.rtip-pop')) hide() },true);
+  document.addEventListener('focusin',e=>{ const el=pop(e); if(el) show(el) });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') hide() });
+  addEventListener('scroll',hide,true); addEventListener('resize',hide);
+})();
 function glossHTML(list,army){ const g=listGlossary(list,army); if(!g.length) return '';
   return `<section class="gloss"><h3>Reglas especiales y términos clave</h3>${g.map(x=>`<p><b>${esc(x.name)}.</b> ${x.desc?esc(x.desc):'<span class="muted">Regla propia del libro de ejército; consulta el texto completo en el libro.</span>'} <span class="muted small">(${esc(x.who.join(', '))})</span></p>`).join('')}</section>` }
 function pdfGlossary(doc,list,army,th){
@@ -3165,6 +3184,13 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
+const APP_VER='202610211630';
+(function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
+    if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
+  document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
+    (async()=>{ try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))) }catch(e){} try{ const rs=await navigator.serviceWorker?.getRegistrations?.(); for(const r of rs||[]) await r.update() }catch(e){} location.reload() })() });
+  setTimeout(chk,3000); setInterval(chk,10*60*1000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) chk() });
+})();
 initStore();
 </script>
 
