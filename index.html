@@ -1731,7 +1731,45 @@ const ARMY_TAG={cathai:'El Imperio del Dragón Celestial',skaven:'Hijos de la Ra
 const ALL_ARMIES=['Altos Elfos','Bretonia','Condes Vampiro','Demonios del Caos','Elfos Oscuros','Elfos Silvanos','Enanos','Enanos del Caos','El Imperio','Guerreros del Caos','Hombres Bestia','Hombres Lagarto','Kislev','Orcos y Goblins','Perros de la Guerra','Reinos Ogros','Reyes Funerarios','Skaven'];
 /* ---------- Mi colección: miniaturas que tiene el jugador de cada ejército (se guarda en este navegador) ---------- */
 function collOf(aid){ S.coll ||= LS.get('forja.coll',{}); return S.coll[aid] ||= {} }
-function saveColl(){ LS.set('forja.coll',S.coll||{}) }
+function saveColl(){ try{ collMirror() }catch(e){} LS.set('forja.coll',S.coll||{}) }
+const COLL_PAIR={skaven:'tow_sk',caos:'tow_ch',imperio:'tow_emp',altoselfos:'tow_he',enanos:'tow_dw',bretonia:'tow_br',elfososcuros:'tow_de',orcosgoblins:'tow_og',condesvampiro:'tow_vc',hombreslagarto:'tow_lz',elfossilvanos:'tow_we',reyesfunerarios:'tow_tk',demonioscaos:'tow_cd',enanoscaos:'tow_ec',reinosogros:'tow_ogr'};
+const COLL_ALIAS={skaven:{'asesino':'asesino','maestro asesino':'asesino','ingeniero brujo':'ingeniero','caudillo':'caudillo','sacerdote de plaga':'sacerdote'},
+ caos:{'jinetes barbaros del caos':'jinetes','elegidos':'elegidos','ogros':'ogros','trolls':'trolls','gigante':'gigante'},
+ imperio:{'capitan':'capitan','sacerdote guerrero':'sacsigmar','hechicero de guerra':'hechicero','alabarderos':'tropas','lanceros':'tropas','espadachines':'tropas','arcabuceros':'tiradores','ballesteros':'tiradores','compania libre':'milicia','partida de flagelantes':'flagelantes','caballeros pantera':'caballeros','sumo sacerdote':'archilector','gran maestre de los caballeros del lobo blanco':'granmaestre'},
+ altoselfos:{'arqueros':'arqueros','lanceros':'lanceros','sombrios':'sombrios','carro de leones blancos de cracia':'leones','lanzavirotes de repeticion':'lanzavirotes','compania del barco':'naviera','serpiente marina':'sierpe','korhil':'korhil'},
+ enanos:{'maestro ingeniero':'ingeniero','guerreros':'guerreros','canon':'canon','matadores buscamuertes':'buscamuertes','paladin de guerra':'senorclan','el cercenagoblins de malakai makaisson':'cercenagoblins'},
+ bretonia:{'senor bretoniano':'duque','profetisa de la dama':'profetisa','damisela de la dama':'damisela'},
+ elfososcuros:{'hechicera bruja':'hechicera','gran hechicera':'suprema','noble de hag graef':'noble','maestro de los asesinos':'asesino','asesino elfo oscuro':'asesino','ballesteros elfos oscuros':'ballesteros','corsarios':'corsarios'},
+ orcosgoblins:{'gran chaman orco':'granchamanorco','gran chaman orco zalvaje':'granchamanorco','chaman orco':'chamanorco','chaman orco zalvaje':'chamanorco','guerreroz orcos':'orcos','arkeroz orcos':'orcos','orcos zalvajes':'orcos','snotlings':'snotlings','orcos negroz':'orcosnegros','pastores de garrapatos':'rebano','trolls':'trollscomunes','katapulta de goblins voladores':'katapulta'},
+ condesvampiro:{'senor de los vampiros':'condevampiro','horda zombi':'zombis','bandada de murcielagos':'enjambres','hueste espectral':'hueste','caballeros del clan dragon sangriento':'sangrientos'},
+ hombreslagarto:{'eslizones':'hostigadores','enjambre de la jungla':'enjambres','guerreros gelidos':'jgelidos'},
+ elfossilvanos:{'noble':'capitan','jinetes de kurnous':'salvajes'},
+ reyesfunerarios:{'portador del icono funerario':'heraldo','caballeria ligera esqueletica':'jinetesarco','caballeria pesada esqueletica':'jinetes','enjambre funerario':'enjambres'},
+ enanoscaos:{'brujo-sacerdote':'profeta','brujo sacerdote':'profeta','hobgoblins':'degolladores','ironsworn':'juramentados','centauros enanos del caos':'centauros'},
+ reinosogros:{'ogros tripasduras':'tripasduras','yehtis':'yetis','gigante sometido':'gigante'}};
+const collPartner=aid=>COLL_PAIR[aid]||Object.keys(COLL_PAIR).find(k=>COLL_PAIR[aid]===undefined&&COLL_PAIR[k]===aid)||null;
+function collNormW(s){ return glossNorm(String(s).replace(/\(.*?\)/g,'')).split(/[^a-z0-9]+/).filter(w=>w&&!['de','del','la','las','el','los','y','con','unidad','unidades','rebano','rebanos','pena','penas','a','en'].includes(w)).map(w=>w.replace(/(es|s)$/,'')).filter(Boolean) }
+// pares fila-origen → clave-destino (de 7ª a TOW o al revés)
+function collPairs(src,dst){ const s7=src.edition!=='tow'; const A7=s7?src:dst, AT=s7?dst:src; const al=COLL_ALIAS[A7.id]||{};
+  const r7=collRows(collArmy(A7)), rT=collRows(collArmy(AT)); const keyT=new Set(rT.map(r=>r.key));
+  const m=(name,cands)=>{ const n=collNormW(name).join(' '); if(!n) return null; let hit=cands.filter(c=>collNormW(c.name).join(' ')===n); if(hit.length===1) return hit[0];
+    const ns=new Set(collNormW(name)); let best=null,bs=0,tie=false; for(const c of cands){ const cs=new Set(collNormW(c.name)); const i=[...ns].filter(x=>cs.has(x)).length, j=i/(new Set([...ns,...cs]).size||1); if(j>bs){best=c;bs=j;tie=false} else if(j===bs&&j>0) tie=true } return bs>=0.6&&!tie?best:null };
+  const map=[]; for(const r of r7){ const isM=r.key.startsWith('m:'); const a=al[glossNorm(r.name.replace(/\(.*?\)/g,'')).trim()]; let t=a&&keyT.has(a)?rT.find(x=>x.key===a):m(r.name,rT.filter(x=>x.key.startsWith('m:')===isM)); map.push([r,t]) }
+  if(s7) return map.map(([r,t])=>({from:r,to:t}));
+  const cnt={}; for(const [r,t] of map) if(t) cnt[t.key]=(cnt[t.key]||0)+1;
+  return rT.map(t=>{ const m7=map.filter(([r,x])=>x&&x.key===t.key).map(([r])=>r); return {from:t,to:m7.length===1?m7[0]:null,multi:m7.length>1} }) }
+function collMirrorTo(src,dst){ const c=collOf(src.id), d=collOf(dst.id); const P=collPairs(src,dst); const tot={}, miss=[], multi=[];
+  for(const p of P){ const q=Number(c[p.from.key]||0); if(p.to){ tot[p.to.key]=(tot[p.to.key]||0)+q } else if(q>0) (p.multi?multi:miss).push(p.from.name+' ('+q+')') }
+  for(const k in tot) d[k]=tot[k];
+  S.collX ||= LS.get('forja.collX',{}); S.collX[dst.id]={from:src.id,miss,multi}; LS.set('forja.collX',S.collX) }
+let _collSnap=null, _collBusy=false;
+function collMirror(){ if(_collBusy||!S.armies) return; _collBusy=true; try{ const prev=_collSnap||LS.get('forja.coll',{})||{}, cur=S.coll||{};
+    const changed=Object.keys(cur).filter(a=>JSON.stringify(cur[a]||{})!==JSON.stringify(prev[a]||{})); const done=new Set();
+    for(const aid of changed){ if(done.has(aid)) continue; const pid=collPartner(aid), A=S.armies[aid], B=pid&&S.armies[pid]; if(!A||!B) continue; collMirrorTo(A,B); done.add(pid) }
+    _collSnap=JSON.parse(JSON.stringify(cur)) } finally{ _collBusy=false } }
+// primera vez: si esta edición no tiene colección pero la otra sí, se copia
+function collEnsure(army){ const c=collOf(army.id); if(Object.values(c).some(n=>n>0)) return; const pid=collPartner(army.id), B=pid&&S.armies[pid]; if(!B) return; const cb=collOf(pid); if(!Object.values(cb).some(n=>n>0)) return;
+  _collBusy=true; try{ collMirrorTo(B,army) } finally{ _collBusy=false } _collSnap=JSON.parse(JSON.stringify(S.coll||{})); LS.set('forja.coll',S.coll||{}) }
 const collHave=(aid,uid)=>Number(collOf(aid)[uid]||0);
 function collUsed(list,uid,exceptId){ return list.entries.filter(e=>e.unitId===uid && e.id!==exceptId).reduce((s,e)=>s+(e.size||1),0) }
 const isModelOpt=o=>o.model!==undefined?!!o.model:(o.kind==='mount' || /apoyo/i.test(o.group||'') || (o.kind==='qty' && !/por miniatura|hechizo|en lugar de|opci[oó]n singular/i.test(o.name)) || /^equipo$/.test(o.id) && o.kind==='qty');
@@ -1782,8 +1820,9 @@ function applyCollRows(army,rows){ army=collArmy(army); const known=collRows(arm
     if(row && qty!=null && !isNaN(qty)){ c[row.key]=Math.max(0,qty); ok.push(row.name) } else if(!row && cells.some(x=>x&&!/^\d+$/.test(x)) && qty) miss.push(cells.filter(x=>x&&!/^\d+$/.test(x)).join(' · ')) }
   saveColl(); return {ok:ok.length, miss:miss.slice(0,20), missN:miss.length} }
 function collEditor(army){
-  army=collArmy(army); const c=collOf(army.id); const ir=S.collImport&&S.collImport.army===army.id?S.collImport:null;
+  army=collArmy(army); try{ collEnsure(army) }catch(e){} const c=collOf(army.id); const px=collPartner(army.id), PB=px&&S.armies[px]; const cx=(S.collX||LS.get('forja.collX',{}))[army.id]; const ir=S.collImport&&S.collImport.army===army.id?S.collImport:null;
   return `<div class="coll-ed"><p class="small muted" style="margin:0 0 8px">Indica cuántas miniaturas tienes de cada unidad (en personajes y máquinas, cuántas copias). Se guarda en este navegador y sirve para todas tus listas de ${esc(army.name)}.</p>
+    ${PB?`<p class="note small">Tu colección se comparte entre <b>7ª edición</b> y <b>The Old World</b>: al cambiarla aquí, las miniaturas con equivalente en ${esc(PB.name)} (${PB.edition==='tow'?'The Old World':'7ª'}) se actualizan solas.${cx&&cx.from===px&&(cx.miss?.length||cx.multi?.length)?`${cx.miss?.length?`<br><b>No compatibles con esta edición</b> (de tu colección de ${esc(PB.name)}): ${esc(cx.miss.join(', '))}`:''}${cx.multi?.length?`<br><b>Revisa a mano</b> (equivalen a varias unidades de la otra edición): ${esc(cx.multi.join(', '))}`:''}`:''}</p>`:''}
     <div class="coll-io"><button type="button" class="btn" data-a="collTpl">⬇ Descargar plantilla (CSV)</button><label class="btn">⬆ Subir colección (Excel, CSV o Word)<input type="file" accept=".csv,.txt,.xlsx,.xls,.ods,.docx" data-collfile hidden></label></div>
     <p class="small muted" style="margin:4px 0 8px">Rellena la columna «Cantidad» de la plantilla con Excel y súbela. También vale tu propia hoja o un Word con una tabla o líneas del tipo «20 Guerreros de Clan»: la Forja reconoce los nombres. Las cantidades del archivo sustituyen a las que tengas.</p>
     ${ir?`<p class="note">${ir.loading?'Leyendo el archivo…':ir.error?esc(ir.error):`Colección actualizada: ${ir.ok} entrada${ir.ok===1?'':'s'} reconocida${ir.ok===1?'':'s'}.${ir.missN?` No he reconocido ${ir.missN}: ${esc(ir.miss.join(', '))}${ir.missN>ir.miss.length?'…':''}. Revisa el nombre o usa la plantilla.`:''}`}</p>`:''}
@@ -2814,7 +2853,7 @@ function rulesHTML(str,aid){ aid=aid||armyOf(curList())?.id; return splitRules(s
   document.addEventListener('click',e=>{ const el=pop(e); if(el){ e.preventDefault(); e.stopPropagation(); if(cur===el && Date.now()-at>400) hide(); else show(el); return } if(cur && !e.target.closest?.('.rtip-pop')) hide() },true);
   document.addEventListener('focusin',e=>{ const el=pop(e); if(el) show(el) });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') hide() });
-  addEventListener('scroll',hide,true); addEventListener('resize',hide);
+  window.addEventListener('scroll',hide,true); window.addEventListener('resize',hide);
 })();
 function glossHTML(list,army){ const g=listGlossary(list,army); if(!g.length) return '';
   return `<section class="gloss"><h3>Reglas especiales y términos clave</h3>${g.map(x=>`<p><b>${esc(x.name)}.</b> ${x.desc?esc(x.desc):'<span class="muted">Regla propia del libro de ejército; consulta el texto completo en el libro.</span>'} <span class="muted small">(${esc(x.who.join(', '))})</span></p>`).join('')}</section>` }
@@ -3184,12 +3223,12 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610211630';
+const APP_VER='202610211641';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
     (async()=>{ try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))) }catch(e){} try{ const rs=await navigator.serviceWorker?.getRegistrations?.(); for(const r of rs||[]) await r.update() }catch(e){} location.reload() })() });
-  setTimeout(chk,3000); setInterval(chk,10*60*1000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) chk() });
+  if(typeof location!=='undefined' && typeof process==='undefined'){ setTimeout(chk,3000); setInterval(chk,10*60*1000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) chk() }) }
 })();
 initStore();
 </script>
