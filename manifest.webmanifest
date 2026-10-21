@@ -1,7 +1,7 @@
 {
  "name": "Forja de Ejércitos",
  "short_name": "La Forja",
- "description": "Constructor de listas para Warhammer Fantasy 7ª edición, hecho por fans.",
+ "description": "Constructor de listas para Warhammer Fantasy 7ª edición y The Old World, hecho por fans.",
  "lang": "es",
  "start_url": "./",
  "scope": "./",

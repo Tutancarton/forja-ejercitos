@@ -1,10 +1,11 @@
 # Forja de Ejércitos
 
-Constructor gratuito de listas para **Warhammer Fantasy 7ª edición**, hecho por fans.
+Constructor gratuito de listas para **Warhammer Fantasy 7ª edición** y **Warhammer: The Old World**, hecho por fans.
 
 👉 **Abrir la app:** https://tutancarton.github.io/forja-ejercitos/
 
 - Todos los ejércitos de 7ª, con sus puntos oficiales (no editables).
+- The Old World: los 17 ejércitos con sus Ejércitos de Infamia, actualizados con las FAQ oficiales.
 - Listas sugeridas para torneo y contra cada rival.
 - Cuenta gratuita opcional para guardar tus listas y tu colección en la nube.
 - Se puede instalar en el móvil o el ordenador y funciona sin conexión.
