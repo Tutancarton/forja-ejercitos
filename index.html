@@ -1794,7 +1794,7 @@ function viewHome(){
   if(!sel){
     return `<div class="page home">
       <section class="home-hero"><p class="home-kicker">Forja de Ejércitos · ${ed==='tow'?'Warhammer: The Old World':'Warhammer Fantasy 7ª edición'}</p><h2>¿Qué ejército llevas hoy a la batalla?</h2></section>
-      ${ed==='tow'?`<p class="tow-note">The Old World está en fase de pruebas. Los estandartes con <b style="color:#B8901F">reborde dorado</b> son <b>Facciones Leyenda</b>, que no tendrán libro oficial propio de GW.</p>`:''}
+      ${ed==='tow'?`<p class="tow-note">Los estandartes con <b style="color:#B8901F">reborde dorado</b> son <b>Facciones Leyenda</b>, que no tendrán libro oficial propio de GW.</p>`:''}
       <div class="banner-grid">${[...armies,...(ed==='7'?WIP_ARMIES.filter(w=>!S.armies[w.id]):[])].sort((a,b)=>a.name.localeCompare(b.name)).map(a=>{const c=ARMY_COL[a.theme]||a.col||'#5A5A5A'; const n=nl(a.id);
         if(a.wip) return `<button class="banner wip" data-a="wipArmy" data-v="${esc(a.id)}" style="--c:${c}" title="En construcción">
           <span class="bn-pole"></span><span class="bn-cloth"><span class="bn-inner"></span>${facIcon(a)?`<img class="bn-icon" src="${facIcon(a)}" alt="">`:''}<span class="bn-name">${esc(a.name)}</span><span class="bn-wip">En construcción</span></span></button>`;
