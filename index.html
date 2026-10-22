@@ -1008,7 +1008,7 @@ function validateTOW(list,army){
       (cnt[g] ||= {c:0,u:0})[isChar(u)?'c':'u']++ }
     for(const [g,v] of Object.entries(cnt)) if(v.c!==v.u) w.push({key:'markMatch_'+g, t:`La Sombra Crece: tienes ${v.c} personaje${v.c===1?'':'s'} con Marca de ${GN[g]} y ${v.u} unidad${v.u===1?'':'es'} (no personaje) con Marca de ${GN[g]}; deben coincidir.`, help:'Por cada personaje con una Marca distinta de la Absoluta debe haber una unidad (no personaje) con esa misma Marca, y viceversa. Cambia la Marca de un personaje o de una unidad, o añade la que falte.'}) }
   { const cnt={}; for(const e of list.entries){ if(isAlly(e)) continue; for(const id of e.items||[]){ const it=itemOf(army,id); if(it && !it.repeat) (cnt[id] ||= []).push(e) } }
-    for(const [id,es] of Object.entries(cnt)) if(es.length>1){ const it=itemOf(army,id); w.push({key:'dupItem_'+id, t:`«${it.name}» solo puede elegirse una vez por ejército y lo llevan ${[...new Set(es)].map(nm).join(' y ')}.`, help:'Los objetos mágicos, los Regalos del Caos y las Mutaciones solo se pueden elegir una vez por ejército, salvo los marcados con * (por ejemplo, la Baratija de Obsidiana o el Favor de los Dioses). Quita la copia sobrante.'}) } }
+    for(const [id,es] of Object.entries(cnt)) if(es.length>1){ const it=itemOf(army,id); w.push({key:'dupItem_'+id, t:`«${it.name}» solo puede elegirse una vez por ejército y lo llevan ${[...new Set(es)].map(nm).join(' y ')}.`, help:'Los objetos mágicos, los Regalos del Caos y las Mutaciones solo se pueden elegir una vez por ejército, salvo los marcados con * (por ejemplo, la Baratija de Obsidiana o el Favor de los Dioses). Quita la copia sobrante.', actions:[...new Set(es)].map(x=>({a:'rmItemFrom',v:x.id+'|'+id,label:'Quitar de '+nm(x)}))}) } }
   if(comp.genWizard && gen && !isAlly(gen) && !wizLevel(gen,unitOf(army,gen.unitId)||{})) w.push({key:'genwiz', t:`El General debe ser un Hechicero (ahora lo es ${nm(gen)}, que no lo es).`, help:'Elige como General a un personaje hechicero, o sube a hechicero a este personaje en su ficha.', actions:[go(gen),...list.entries.filter(e=>{const u=unitOf(army,e.unitId);return u&&isChar(u)&&!isAlly(e)&&wizLevel(e,u)}).map(e=>({a:'keepGen',v:e.id,label:`Hacer General a ${nm(e)}`,pri:true}))]});
   const bsbEs=list.entries.filter(e=>{const u=unitOf(army,e.unitId);return u&&!isAlly(e)&&hasBsb(e,u)});
   if(bsbEs.length>1) w.push({key:'bsb', t:'Solo puede haber un portaestandarte de batalla.', help:'Elige cuál la conserva.', actions:[...bsbEs.map(e=>({a:'keepBsb',v:e.id,label:`Que la lleve ${nm(e)}`,pri:true}))]});
@@ -2238,6 +2238,58 @@ function iconImg(u,cls){ return `<span class="uicon ic-${iconKey(u)} ${cls}" rol
   document.head.appendChild(st) }catch(_){} })();
 /* ---------- shared helpers for list, sheet and PDF ---------- */
 const optLabel = o => o.kind==='mount' ? 'Montura: '+o.name : o.name;
+const TOW_WEAP=[[/ristras? de pistolas/,'Ristra de pistolas','Disparo 12" · F4 · PA -1 · Perforacorazas (1), Disparos Múltiples (2), Disparo Rápido. En combate cuenta como arma de mano adicional.'],
+ [/armas? de mano adicional|dos armas de mano/,'Arma de mano adicional','Combate · F · PA – · Ataques Adicionales (+1), Requiere Ambas Manos.'],
+ [/armas? a dos manos/,'Arma a dos manos','Combate · F+2 · PA -2 · Perforacorazas (1), Requiere Ambas Manos, Golpea Último.'],
+ [/alabardas?/,'Alabarda','Combate · F+1 · PA -1 · Perforacorazas (1), Requiere Ambas Manos.'],
+ [/mayal(es)?/,'Mayal','Combate · F+2 · PA -2 · Requiere Ambas Manos. El +2 a la F solo en la primera ronda de cada combate.'],
+ [/lanzas? de caballer[ií]a/,'Lanza de caballería','Combate · F+2 · PA -2 · Perforacorazas (1). Solo caballería o monstruos, y solo el turno en que carga; después usa su arma de mano.'],
+ [/lanzas? arrojadizas?/,'Lanza arrojadiza','Combate · F · PA – · Luchar con una Fila Extra.'],
+ [/arcos? largos?/,'Arco largo','Disparo 30" · F3 · Perforacorazas (1), Andanada.'],
+ [/arcos? cortos?/,'Arco corto','Disparo 18" · F3 · Disparo Rápido, Andanada.'],
+ [/arcos? de guerra/,'Arco de guerra','Disparo 24" · F · Andanada.'],
+ [/ballestas? de repetici[oó]n/,'Ballesta de repetición','Disparo de repetición: varios disparos por turno (ver el perfil del libro).'],
+ [/ballestas?/,'Ballesta','Disparo 30" · F4 · Perforacorazas (2), Pesado.'],
+ [/arcabu(z|ces)/,'Arcabuz','Disparo 24" · F4 · PA -1 · Perforacorazas (1), Pesado.'],
+ [/pistolas?/,'Pistola','Disparo 12" · F4 · PA -1 · Perforacorazas (1), Disparo Rápido.'],
+ [/jabalinas?/,'Jabalina','Disparo 12" · F · Disparo Rápido, Mover y Disparar.'],
+ [/hachas? arrojadizas?/,'Hacha arrojadiza','Disparo 9" · F+1 · Disparo Rápido.'],
+ [/armas arrojadizas/,'Armas arrojadizas','Disparo 9" · F · Disparos Múltiples (2), Disparo Rápido, Mover y Disparar.'],
+ [/hondas?/,'Honda','Disparo 18" · F3 · Disparos Múltiples (2).'],
+ [/lanzas?/,'Lanza','Infantería: Combate · F · Luchar con una Fila Extra; sin ataques de apoyo el turno que carga y +1 I contra quien la carga por el frente. Montado: F+1 PA -1 y Luchar con una Fila Extra el turno que carga.'],
+ [/armadura (completa|de placas)/,'Armadura completa','Valor de armadura 4+.'],
+ [/armadura pesada/,'Armadura pesada','Valor de armadura 5+.'],
+ [/armadura ligera/,'Armadura ligera','Valor de armadura 6+.'],
+ [/escudos?/,'Escudo','Mejora en 1 el valor de armadura (máx. 2+).'],
+ [/bardas?/,'Barda','La montura lleva barda: mejora en 1 el valor de armadura del jinete.']];
+function towOptInfo(o){ if(o.kind==='mount'||o.kind==='wiz'||o.lore||o.cnt||/^rasgo/i.test(o.name)) return ''; const n=glossNorm(o.name.split(/ en vez de | por /i)[o.name.match(/^cambiar/i)?1:0]||o.name);
+  for(const [re,t,d] of TOW_WEAP) if(re.test(n)) return ` <abbr class="rtip info-i" data-pop="1" tabindex="0" data-name="${esc(t)}" title="${esc(d)}">ⓘ</abbr>`; return '' }
+function towItemHolders(e,army){ const L=curList(), m={}; if(!L) return m; for(const x of L.entries){ if(x===e||x.id===e.id||isAlly(x)) continue; for(const id of x.items||[]) (m[id] ||= []).push(x) } return m }
+function towUsedOpts(e,army,types){ const H=towItemHolders(e,army); const nm=x=>unitOf(army,x.unitId)?.name||'';
+  const its=allItems(army).filter(i=>!i.repeat && H[i.id] && types.includes(i.type)); if(!its.length) return '';
+  return `<optgroup label="Ya elegidos en el ejército (1/1)">${its.map(i=>`<option disabled>${esc(i.name)} — ya lo lleva: ${esc(H[i.id].map(nm).join(', '))}</option>`).join('')}</optgroup>` }
+function towUnitItemsHTML(e,u,army,kind){ const pool=itemPool(e,u,army), its=(e.items||[]).map(id=>itemOf(army,id)).filter(Boolean);
+  const isB=i=>i.type==='estandarte', fit=i=>kind==='banner'?isB(i):(!isB(i)&&!isGift(i)); const P=pool.filter(fit), I=its.filter(fit);
+  const cap=kind==='banner'?bannerCap(e,u):optsOf(e,u).reduce((t,o)=>t+(o.items||0),0); if(!P.length&&!I.length) return '';
+  const types=kind==='banner'?['estandarte']:Object.keys(ITYPES).filter(t=>t!=='estandarte'&&t!=='regalo');
+  const opts=types.map(t=>{const g=P.filter(i=>i.type===t); return g.length?`<optgroup label="${itl(t,army)}">${g.map(i=>`<option value="${esc(i.id)}">${esc(i.name)} — ${effCost(e,i)} pts${i.common?'':' ★'}${i.repeat?'':' (0/1)'}</option>`).join('')}</optgroup>`:''}).join('')+towUsedOpts(e,army,types);
+  return `<div class="opt-sub"><div class="small muted">${kind==='banner'?'Estandarte mágico':'Objetos mágicos del campeón'} · hasta ${cap} pts</div>${I.map(i=>`<div class="itemrow"><span>${esc(i.name)}${i.fx?`<br><span class="muted small">${esc(i.fx)}</span>`:''}</span><span class="num">${effCost(e,i)}</span><button class="x" data-a="rmItem" data-v="${esc(i.id)}" aria-label="Quitar ${esc(i.name)}">×</button></div>`).join('')}${P.length?`<div class="row"><select id="${kind==='banner'?'itemPickB':'itemPickC'}" style="flex:1;min-width:0"><option value="">${kind==='banner'?'Elegir estandarte mágico…':'Elegir objeto mágico…'}</option>${opts}</select><button class="btn" data-a="addItem" data-v="${kind==='banner'?'banner':'champ'}">Añadir</button></div>`:''}</div>` }
+const towUnitItems=(e,u,army)=>isTOW(army)&&!isChar(u)&&!army.runes&&!(giftBudget(e,u)>0);
+function towSaves(e,u,army){ if(!isTOW(army)||!u) return ''; const os=optsOf(e,u), its=(e.items||[]).map(id=>itemOf(army,id)).filter(Boolean), rules=effRules(e,u), eq=(u.equip||'').toLowerCase();
+  const sc=t=>/armadura (completa|de placas)/.test(t)?4:/armadura pesada/.test(t)?5:/armadura ligera/.test(t)?6:7;
+  let b=sc(eq.split(/\.|monturas?:|corcel|caballo|pesadilla/)[0]); let sh=/escudo/.test(eq.split(/\.|monturas?:/)[0])?1:0, bard=/barda/.test(eq)?1:0, plus=0;
+  for(const o of os){ const n=o.name.toLowerCase(); if(o.kind==='mount'){ if(/barda/.test(n)) bard=1; continue }
+    if(/escudos?/.test(n) && /(cambiar|en vez de|por) .*escudo|escudos? por/.test(n)) sh=0; else if(/^escudos?\b|\bescudos?$|y escudo/.test(n)) sh=1;
+    if(!o.cnt && /^(armadura|cambiar[^:]*armadura)/.test(n) && /armadura (ligera|pesada|completa|de placas)/.test(n)){ const t=n.split(/ en vez de /)[0]; b=sc(t) } if(!o.cnt && /^bardas?\b/.test(n)) bard=1 }
+  for(const i of its){ if(i.type!=='armadura') continue; const f=(i.fx||'').toLowerCase(), first=f.split(/[.;]/)[0]; const v=sc(first); if(v<7) b=Math.min(b,v);
+    if(/^escudo|\bescudo\b/.test(first)&&v===7) sh=1; const m=f.match(/mejora en (\d)/); if(m) plus+=+m[1] }
+  const vm=(u.notes||'').match(/valor de armadura (\d)\+/i); if(vm) b=Math.min(b,+vm[1]);
+  const pd=+(rules.match(/Pellejo Duro \((\d)\)/i)||[])[1]||0;
+  let arm=Math.max(2,b-sh-bard-pd-plus); const armTxt=arm<=6?arm+'+':'—';
+  const txt=[rules,...its.map(i=>i.fx||''),u.notes||''].join(' · '); let ward=7, reg=7;
+  for(const m of txt.matchAll(/(?:salvaci[oó]n especial(?: de)?|Armadura del Caos \(|especial )\s*(\d)\+/gi)) ward=Math.min(ward,+m[1]);
+  for(const m of txt.matchAll(/Regeneraci[oó]n \((\d)\+\)/gi)) reg=Math.min(reg,+m[1]);
+  return `<p class="saves small" style="margin:4px 0 0"><b>Salvaciones:</b> armadura ${armTxt} · especial ${ward<7?ward+'+':'—'} · regeneración ${reg<7?reg+'+':'—'} <span class="muted">(calculado con su equipo y objetos)</span></p>` }
 function mountOf(e,u){ return optsOf(e,u).find(o=>o.kind==='mount') || null }
 // Notas de magia (saberes/hechizos) se omiten al exportar: ya van en las cartas de hechizos.
 function cardNotes(x){ const n0=x.u.notes||''; const n=(x.lv||x.lores?.length) && /saber|hechiz|magia/i.test(n0) && !x.u.peana ? '' : n0;
@@ -2401,7 +2453,7 @@ function detailHTML(e,list,army,gen){
   if(!u.single) h+=`<div class="sec"><h4>Miniaturas (${u.cost} pts c/u${u.base?`, +${u.base} incluidos`:''}${u.min?`, mín. ${u.min}`:''}${u.max?`, máx. ${u.max}`:''})</h4>
     <div class="stepper"><button data-a="size" data-v="-1" aria-label="Quitar una" ${e.size<=sizeMin(u)?'disabled':''}>−</button><input type="number" class="num" id="esize" value="${e.size}" min="${sizeMin(u)}" ${isFinite(sizeMax(u))?`max="${sizeMax(u)}"`:''}><button data-a="size" data-v="1" aria-label="Añadir una" ${e.size>=sizeMax(u)?'disabled':''}>+</button>
     <button class="btn small" data-a="size" data-v="5" ${e.size>=sizeMax(u)?'disabled':''}>+5</button></div></div>`;
-  h+=`<div class="sec"><h4>Atributos${u.peana?' '+peanaIcon(u.peana):''}</h4>${statsTable(u,e)}
+  h+=`<div class="sec"><h4>Atributos${u.peana?' '+peanaIcon(u.peana):''}</h4>${statsTable(u,e)}${towSaves(e,u,army)}
     ${u.equip?`<p class="small" style="margin:6px 0 0"><b>Equipo:</b> ${esc(u.equip)}</p>`:''}
     ${effRules(e,u)?`<p class="small" style="margin:4px 0 0"><b>Reglas especiales:</b> ${rulesHTML(effRules(e,u))}</p>`:''}
     ${u.notes?`<p class="small muted" style="margin:4px 0 0">${esc(u.notes)}</p>`:''}${towInfoHTML(e,u)}</div>`;
@@ -2414,8 +2466,9 @@ function detailHTML(e,list,army,gen){
         continue;
       }
       const on=e.opts.includes(o.id);
-      h+=`<label class="opt"><input type="checkbox" name="${o.group?'g-'+esc(o.group):'o-'+o.id}" data-a="opt" data-v="${esc(o.id)}" ${on?'checked':''}>
-      <span>${esc(optLabel(o))}${o.group&&o.kind!=='mount'?` <span class="muted small">(${esc(o.group)})</span>`:''}</span><span class="num">+${o.cost}${o.per==='model'?'/min.':''}</span></label>`;
+      const capd=isTOW(army)&&!on&&o.cnt&&u.optMax?.[o.cnt]!=null&&optsOf(e,u).filter(x=>x.cnt===o.cnt).length>=u.optMax[o.cnt];
+      h+=`<label class="opt"${capd?' style="opacity:.55"':''}><input type="checkbox" name="${o.group?'g-'+esc(o.group):'o-'+o.id}" data-a="opt" data-v="${esc(o.id)}" ${on?'checked':''} ${capd?'disabled':''}>
+      <span>${esc(optLabel(o))}${isTOW(army)?towOptInfo(o):''}${o.group&&o.kind!=='mount'?` <span class="muted small">(${esc(o.group)})</span>`:''}${capd?` <span class="muted small">(máx. ${u.optMax[o.cnt]} ${esc((u.optMaxLabel||{})[o.cnt]||'')})</span>`:''}</span><span class="num">+${o.cost}${o.per==='model'?'/min.':''}</span></label>${on&&towUnitItems(e,u,army)?(o.items>0?towUnitItemsHTML(e,u,army,'champ'):o.kind==='standard'?towUnitItemsHTML(e,u,army,'banner'):''):''}`;
     }
     h+='</div>';
   }
@@ -2430,21 +2483,21 @@ function detailHTML(e,list,army,gen){
     const pI=pool.filter(i=>!isGift(i)), pG=pool.filter(isGift), iI=its.filter(i=>!isGift(i)), iG=its.filter(isGift);
     const usedI=iI.filter(i=>i.type!=='estandarte').reduce((s,i)=>s+effCost(e,i),0), usedG=iG.reduce((s,i)=>s+effCost(e,i),0);
     const row=i=>`<div class="itemrow"${i.fx?` title="${esc(i.fx)}"`:''}><span>${esc(i.name)} <span class="muted small">${itl(i.type,army)}</span>${i.fx?`<br><span class="muted small">${esc(i.fx)}</span>`:''}</span><span class="num">${effCost(e,i)}</span><button class="x" data-a="rmItem" data-v="${esc(i.id)}" aria-label="Quitar ${esc(i.name)}">×</button></div>`;
-    const optsOfT=(P,types)=>types.map(t=>{const g=P.filter(i=>i.type===t); return g.length?`<optgroup label="${itl(t,army)}">${g.map(i=>`<option value="${esc(i.id)}">${esc(i.name)} — ${effCost(e,i)} pts${effCost(e,i)>i.cost?' (repetida)':''}${i.common?'':' ★'}</option>`).join('')}</optgroup>`:''}).join('');
+    const optsOfT=(P,types)=>types.map(t=>{const g=P.filter(i=>i.type===t); return g.length?`<optgroup label="${itl(t,army)}">${g.map(i=>`<option value="${esc(i.id)}">${esc(i.name)} — ${effCost(e,i)} pts${effCost(e,i)>i.cost?' (repetida)':''}${i.common?'':' ★'}${isTOW(army)&&!i.repeat?' (0/1)':''}</option>`).join('')}</optgroup>`:''}).join('');
     if(pI.length||iI.length){ const lim=b?(hasBsb(e,u)?`${b} pts (o un estandarte mágico sin límite)`:`${b} pts`):'sin objetos mágicos';
       h+=`<div class="sec"><h4>Objetos mágicos · ${esc(lim)}${b?` · usados ${usedI}`:''}</h4><div class="items">${iI.map(row).join('')}
-      ${pI.length?`<div class="row"><select id="itemPick" style="flex:1;min-width:0"><option value="">Elegir objeto mágico…</option>${optsOfT(pI,Object.keys(ITYPES).filter(t=>t!=='regalo'))}</select><button class="btn" data-a="addItem">Añadir</button></div>`:''}</div><p class="muted small" style="margin:4px 0 0">★ objeto propio del ejército</p></div>`; }
+      ${pI.length?`<div class="row"><select id="itemPick" style="flex:1;min-width:0"><option value="">Elegir objeto mágico…</option>${optsOfT(pI,Object.keys(ITYPES).filter(t=>t!=='regalo'))}${towUsedOpts(e,army,Object.keys(ITYPES).filter(t=>t!=='regalo'))}</select><button class="btn" data-a="addItem">Añadir</button></div>`:''}</div><p class="muted small" style="margin:4px 0 0">★ objeto propio del ejército</p></div>`; }
     h+=`<div class="sec"><h4>${esc(gl)} · hasta ${GB} pts (presupuesto aparte) · usados ${usedG}</h4><div class="items">${iG.map(row).join('')}
-      ${pG.length?`<div class="row"><select id="giftPick" style="flex:1;min-width:0"><option value="">Elegir ${esc(gl.toLowerCase())}…</option>${optsOfT(pG,['regalo'])}</select><button class="btn" data-a="addItem" data-v="gift">Añadir</button></div>`:(iG.length?'':`<p class="muted small">No quedan opciones disponibles con el presupuesto restante.</p>`)}</div></div>`;
+      ${pG.length?`<div class="row"><select id="giftPick" style="flex:1;min-width:0"><option value="">Elegir ${esc(gl.toLowerCase())}…</option>${optsOfT(pG,['regalo'])}${towUsedOpts(e,army,['regalo'])}</select><button class="btn" data-a="addItem" data-v="gift">Añadir</button></div>`:(iG.length?'':`<p class="muted small">No quedan opciones disponibles con el presupuesto restante.</p>`)}</div></div>`;
   }
-  if(!towSplit && (pool.length||its.length)){
+  if(!towSplit && !towUnitItems(e,u,army) && (pool.length||its.length)){
     const b=itemBudget(e,u);
     const lim = (isChar(u) ? (b?(hasBsb(e,u)?`${b} pts (o un estandarte mágico sin límite)`:`${b} pts`):'sin objetos mágicos') : [b?`equipo hasta ${b} pts`:'', hasStd(e,u)&&bannerCap(e,u)?`estandarte hasta ${bannerCap(e,u)} pts`:''].filter(Boolean).join(' · '))
       + (giftBudget(e,u)?` · ${(army.giftPlural?army.giftPlural.toLowerCase():army.giftLabel?army.giftLabel.toLowerCase()+'s':'regalos')} hasta ${giftBudget(e,u)} pts${army.giftShare?' (dentro del mismo límite)':''}`:'');
-    const opts=Object.keys(ITYPES).map(t=>{const g=pool.filter(i=>i.type===t); return g.length?`<optgroup label="${itl(t,army)}">${g.map(i=>`<option value="${esc(i.id)}">${esc(i.name)} — ${effCost(e,i)} pts${effCost(e,i)>i.cost?' (repetida)':''}${i.common?'':' ★'}</option>`).join('')}</optgroup>`:''}).join('');
+    const opts=Object.keys(ITYPES).map(t=>{const g=pool.filter(i=>i.type===t); return g.length?`<optgroup label="${itl(t,army)}">${g.map(i=>`<option value="${esc(i.id)}">${esc(i.name)} — ${effCost(e,i)} pts${effCost(e,i)>i.cost?' (repetida)':''}${i.common?'':' ★'}${isTOW(army)&&!i.repeat?' (0/1)':''}</option>`).join('')}</optgroup>`:''}).join('');
     h+=`<div class="sec"><h4>${giftBudget(e,u)?'Objetos mágicos y '+(army.giftPlural?army.giftPlural.toLowerCase():army.giftLabel?army.giftLabel.toLowerCase()+'s':'regalos'):'Objetos mágicos y equipo'} · ${esc(lim)}</h4><div class="items">
       ${its.map(i=>`<div class="itemrow"${i.fx?` title="${esc(i.fx)}"`:''}><span>${esc(i.name)} <span class="muted small">${itl(i.type,army)}</span>${i.fx?`<br><span class="muted small">${esc(i.fx)}</span>`:''}</span><span class="num">${effCost(e,i)}</span><button class="x" data-a="rmItem" data-v="${esc(i.id)}" aria-label="Quitar ${esc(i.name)}">×</button></div>`).join('')}
-      ${pool.length?`<div class="row"><select id="itemPick" style="flex:1;min-width:0"><option value="">Elegir objeto…</option>${opts}</select><button class="btn" data-a="addItem">Añadir</button></div>`:''}
+      ${pool.length?`<div class="row"><select id="itemPick" style="flex:1;min-width:0"><option value="">Elegir objeto…</option>${opts}${isTOW(army)?towUsedOpts(e,army,Object.keys(ITYPES)):''}</select><button class="btn" data-a="addItem">Añadir</button></div>`:''}
     </div><p class="muted small" style="margin:4px 0 0">★ objeto propio del ejército</p></div>`;
   }
   h+=`<div class="row"><button class="btn" data-a="dup">Duplicar</button><button class="btn danger" data-a="rmEntry">Quitar de la lista</button></div></div>`;
@@ -2614,7 +2667,7 @@ function cardHTML(x,cat){
    ${x.u.equip?`<p><b>Equipo:</b> ${esc(x.u.equip)}</p>`:''}
    ${x.desc.length?`<p><b>Opciones y objetos:</b> ${esc(x.desc.join(', '))}</p>`:''}
    ${x.joiners.length?`<p><b>Con:</b> ${esc(x.joiners.join(', '))}</p>`:''}
-   ${effRules(x.e,x.u)?`<p><b>Reglas especiales:</b> ${rulesHTML(effRules(x.e,x.u))}</p>`:''}
+   ${towSaves(x.e,x.u,armyFor(x.e,armyOf(curList())))}${effRules(x.e,x.u)?`<p><b>Reglas especiales:</b> ${rulesHTML(effRules(x.e,x.u))}</p>`:''}
    ${x.lv?`<p><b>Hechicero de nivel ${x.lv}</b></p>`:''}
    ${cardNotes(x)?`<p class="muted">${esc(cardNotes(x))}</p>`:''}</div></div>`;
 }
@@ -2695,7 +2748,7 @@ function pdfCard(doc,x,y,w,cat,d,draw,th){
       doc.setDrawColor(90); doc.setLineWidth(0.25); doc.rect(x+w-pad-tw-1.2-RW,y+h+2.6-RH*0.8-0.3,RW,RH) } }
   h+=4;
   h+=pdfStats(doc,d.stats,x+pad,y+h,iw,draw);
-  const paras=[['Equipo:',d.u.equip],['Opciones y objetos:',d.desc.join(', ')],['Con:',d.joiners.join(', ')],['Reglas especiales:',effRules(d.e,d.u)],
+  const paras=[['Equipo:',d.u.equip],['Opciones y objetos:',d.desc.join(', ')],['Con:',d.joiners.join(', ')],['Salvaciones:',towSaves(d.e,d.u,armyFor(d.e,armyOf(curList()))).replace(/<[^>]+>/g,'').replace(/^Salvaciones:\s*/,'').replace(/\s*\(calculado[^)]*\)/,'')],['Reglas especiales:',effRules(d.e,d.u)],
     d.lv?['Hechicero:',`nivel ${d.lv}`]:['',''],['',cardNotes(d)]];
   for(const [lab,txt] of paras) h+=pdfPara(doc,lab,txt,x+pad,y+h,iw,draw,7.2);
   h+=pad;
@@ -2852,7 +2905,7 @@ function rulesHTML(str,aid){ aid=aid||armyOf(curList())?.id; return splitRules(s
 (function(){ let tip=null, cur=null, at=0;
   function hide(){ if(tip){ tip.remove(); tip=null } if(cur&&cur.dataset.t) cur.title=cur.dataset.t; cur=null }
   function show(el){ if(cur===el) return; hide(); const t=el.title||el.dataset.t; if(!t) return; el.dataset.t=t; el.removeAttribute('title'); cur=el; at=Date.now();
-    tip=document.createElement('div'); tip.className='rtip-pop'; tip.setAttribute('role','tooltip'); const b=document.createElement('b'); b.textContent=el.textContent; const d=document.createElement('div'); d.textContent=t; tip.append(b,d); document.body.appendChild(tip);
+    tip=document.createElement('div'); tip.className='rtip-pop'; tip.setAttribute('role','tooltip'); const b=document.createElement('b'); b.textContent=el.dataset.name||el.textContent; const d=document.createElement('div'); d.textContent=t; tip.append(b,d); document.body.appendChild(tip);
     const r=el.getBoundingClientRect(), w=tip.offsetWidth, h=tip.offsetHeight; const x=Math.min(Math.max(8,r.left+r.width/2-w/2), innerWidth-w-8); let y=r.bottom+6; if(y+h>innerHeight-8) y=Math.max(8,r.top-h-6); tip.style.left=x+'px'; tip.style.top=y+'px' }
   const pop=e=>e.target.closest?.('abbr.rtip[data-pop]');
   document.addEventListener('pointerover',e=>{ if(e.pointerType!=='mouse') return; const el=pop(e); if(el) show(el); else if(cur && !e.target.closest?.('.rtip-pop')) hide() });
@@ -3050,7 +3103,8 @@ document.addEventListener('click', async ev=>{
     case 'size': { if(!ent) return; const before=ent.size; ent.size+=Number(v); clampEntry(ent,u); if(list.useColl && Number(v)>0){ const cap=collHave(list.armyId,ent.unitId)-collUsed(list,ent.unitId,ent.id); if(ent.size>cap){ ent.size=Math.max(before,cap); if(ent.size===before){ toast(`Solo tienes ${collHave(list.armyId,ent.unitId)} en tu colección`); touch(list); break } } } if(ent.size===before) toast(Number(v)>0?`Máximo ${sizeMax(u)} miniaturas`:`Mínimo ${sizeMin(u)} miniaturas`); touch(list); break }
     case 'opt': return; // handled on change
     case 'clearGroups': ent.opts=ent.opts.filter(id=>!u.options.find(o=>o.id===id)?.group); touch(list); break;
-    case 'addItem': { const id=$(v==='gift'?'#giftPick':'#itemPick')?.value; if(!id) return; ent.items=[...(ent.items||[]),id]; touch(list); break }
+    case 'rmItemFrom': { const [eid,iid]=String(v).split('|'); const x=list.entries.find(z=>z.id===eid); if(x){ const k=(x.items||[]).indexOf(iid); if(k>=0) x.items.splice(k,1); touch(list) } break }
+    case 'addItem': { const id=$(v==='gift'?'#giftPick':v==='champ'?'#itemPickC':v==='banner'?'#itemPickB':'#itemPick')?.value; if(!id) return; ent.items=[...(ent.items||[]),id]; touch(list); break }
     case 'addRune': { const sel=document.getElementById('rune-'+v); const id=sel?.value; if(!id) return; ent.runic ||= {}; (ent.runic[v] ||= []).push(id); touch(list); break }
     case 'rmRune': { const [k,i]=v.split('|'); ent.runic?.[k]?.splice(Number(i),1); touch(list); break }
     case 'rmItem': { const i=ent.items.indexOf(v); if(i>=0) ent.items.splice(i,1); touch(list); break }
@@ -3229,7 +3283,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610220740';
+const APP_VER='202610222018';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
