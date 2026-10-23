@@ -2266,7 +2266,8 @@ const TOW_WEAP=[[/ristras? de pistolas/,'Ristra de pistolas','Disparo 12" · F4 
  [/escudos?/,'Escudo','Mejora en 1 el valor de armadura (máx. 2+).'],
  [/bardas?/,'Barda','La montura lleva barda: mejora en 1 el valor de armadura del jinete.']];
 function towOptInfo(o){ if(o.kind==='mount'||o.kind==='wiz'||o.lore||o.cnt||/^rasgo/i.test(o.name)) return ''; const n=glossNorm(o.name.split(/ en vez de | por /i)[o.name.match(/^cambiar/i)?1:0]||o.name);
-  for(const [re,t,d] of TOW_WEAP) if(re.test(n)) return ` <abbr class="rtip info-i" data-pop="1" tabindex="0" data-name="${esc(t)}" title="${esc(d)}">ⓘ</abbr>`; return '' }
+  if(/—/.test(o.name)) return ''; let best=null; for(const W of TOW_WEAP){ const m=new RegExp('(^|: |\\by |\\bpor |\\bcon )(?:'+W[0].source+')(?=$| en vez\\b| para\\b| y | ademas\\b| gratis\\b| \\(|,)').exec(n); if(m && (!best||m.index<best[0])) best=[m.index,W] }
+  if(best){ const [t,d]=[best[1][1],best[1][2]]; return ` <abbr class="rtip info-i" data-pop="1" tabindex="0" data-name="${esc(t)}" title="${esc(d)}">ⓘ</abbr>` } return '' }
 function towItemHolders(e,army){ const L=curList(), m={}; if(!L) return m; for(const x of L.entries){ if(x===e||x.id===e.id||isAlly(x)) continue; for(const id of x.items||[]) (m[id] ||= []).push(x) } return m }
 function towUsedOpts(e,army,types){ const H=towItemHolders(e,army); const nm=x=>unitOf(army,x.unitId)?.name||'';
   const its=allItems(army).filter(i=>!i.repeat && H[i.id] && types.includes(i.type)); if(!its.length) return '';
@@ -2867,8 +2868,9 @@ function towGlossFind(term,aid){ let k=glossNorm(String(term).replace(/[*]/g,'')
   const cl=(typeof curList==='function')?curList():null, rvid=(cl&&cl.armyId===aid)?cl.variant:(S.homeArmy===aid?S.homeVar:null), RG=rvid?towRGN(A,rvid):null;
   if(RG&&RG[k]) return RG[k];
   if(GA[k]) return GA[k]; if(TOW_ALIAS[k]) k=TOW_ALIAS[k]; if(GN[k]) return GN[k];
-  for(const key of Object.keys(GA)) if(k.startsWith(key+' ')) return GA[key];
-  for(const key of Object.keys(GN)) if(k.startsWith(key+' ')||k===key) return GN[key];
+  const pfx=key=>k.startsWith(key+' ')&&!/^(de|del|de la|de los|de las)\b/.test(k.slice(key.length+1));
+  for(const key of Object.keys(GA)) if(pfx(key)) return GA[key];
+  for(const key of Object.keys(GN)) if(pfx(key)||k===key) return GN[key];
   if(k.endsWith('s') && GN[k.slice(0,-1)]) return GN[k.slice(0,-1)];
   for(const B of Object.values(S.armies)) if(B!==A && isTOW(B)){ const GB=towAGN(B); if(GB[k]) return GB[k] }
   return null }
@@ -3289,7 +3291,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610230822';
+const APP_VER='202610232047';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
