@@ -3336,7 +3336,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610271751';
+const APP_VER='202610271834';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
@@ -3489,6 +3489,22 @@ if(sb){
 
 /* --- instalación y funcionamiento sin conexión --- */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+
+// ---- Guardar archivos (PDF, plantillas) fuera de Claude: en el navegador se descarga; en la app Android se abre el menú Compartir ----
+(function(){
+  const b64=u8=>{ let s=''; const C=0x8000; for(let i=0;i<u8.length;i+=C) s+=String.fromCharCode.apply(null,u8.subarray(i,i+C)); return btoa(s) };
+  const mime=n=>/\.pdf$/i.test(n)?'application/pdf':/\.csv$/i.test(n)?'text/csv':'application/octet-stream';
+  const fallback={ async save({filename,data}){
+    const cap=window.Capacitor, P=cap?.Plugins||{};
+    if(cap?.isNativePlatform?.() && P.Filesystem && P.Share){
+      const r=await P.Filesystem.writeFile({path:filename,data:b64(data),directory:'CACHE'});
+      await P.Share.share({title:filename,files:[r.uri],dialogTitle:'Guardar o enviar'}); return }
+    const blob=new Blob([data],{type:mime(filename)});
+    if(cap?.isNativePlatform?.()){ try{ const f=new File([blob],filename,{type:mime(filename)}); if(navigator.canShare?.({files:[f]})){ await navigator.share({files:[f],title:filename}); return } }catch(e){ if(e?.name==='AbortError') return } }
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000) } };
+  const set=()=>{ if(!S.dl) S.dl=fallback };
+  set(); setTimeout(set,0); setTimeout(set,1500);
 })();
 
 </script>
