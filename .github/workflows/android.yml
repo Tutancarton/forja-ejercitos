@@ -47,3 +47,12 @@ jobs:
             La app carga siempre la última versión de la Forja: no hace falta reinstalarla cuando se añaden listas o libros.
           files: android-app/LaForja.apk
           make_latest: true
+      - name: Copia directa en la web (descargas/LaForja.apk)
+        working-directory: .
+        run: |
+          cp android-app/LaForja.apk descargas/LaForja.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add descargas/LaForja.apk
+          git commit -m "APK: copia directa en descargas/" || exit 0
+          git pull --rebase && git push
