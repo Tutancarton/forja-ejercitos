@@ -945,6 +945,13 @@ function towLimTxt(p,army){ const c=towComp(army).pct||{}; const P=Number(p||200
   const parts=[]; if(c.chars) parts.push(`Personajes hasta el ${c.chars[1]}% (${f(c.chars[1])} pts)`); if(c.core) parts.push(`Básicas al menos el ${c.core[0]}% (${f(c.core[0])} pts)`);
   if(c.special) parts.push(`Especiales hasta el ${c.special[1]}%`); if(c.rare) parts.push(`Singulares hasta el ${c.rare[1]}%`); if(c.merc) parts.push(`Mercenarios hasta el ${c.merc[1]}%`); if(c.ally) parts.push(`Aliados hasta el ${c.ally[1]}%`);
   return `A ${P.toLocaleString('es-ES')} pts: ${parts.join(', ')}.` }
+function towCollWarn(list,army,w){ if(!list.useColl) return;
+  const nm=e=>unitOf(army,e.unitId)?.name||'Unidad', go=e=>({a:'goEntry',v:e.id,label:`Ver ficha de ${nm(e)}`});
+  const per={}; for(const e of list.entries){ if(!isAlly(e)) (per[e.unitId] ||= []).push(e) }
+  for(const uid in per){ const u0=unitOf(army,uid); if(!u0) continue; const used=collUsed(list,uid), h=collHave(army.id,uid);
+    if(used>h) w.push({key:`coll-${uid}`, t:`${u0.name}: usas ${used} y en tu colección tienes ${h}.`, help:'La lista está limitada a tu colección. Reduce el tamaño o quita unidades, añade esas miniaturas a tu colección, o cambia a «Todas las opciones».', actions:[...per[uid].map(go),{a:'useColl',v:'',label:'Usar todas las opciones'}]}) }
+  for(const m of modelOpts(army)){ const used=collOptUsed(list,army,m.key), h=collHave(army.id,m.key);
+    if(used>h) w.push({key:`coll-${m.key}`, t:`${m.name}: usas ${used} y en tu colección tienes ${h}.`, help:'La lista está limitada a tu colección. Quita esa mejora de alguna unidad, añade esas miniaturas a tu colección, o cambia a «Todas las opciones».', actions:[{a:'useColl',v:'',label:'Usar todas las opciones'}]}) } }
 function validateTOW(list,army){
   const w=[]; const comp=towComp(army), pct=comp.pct||{}, k=towK(list.points);
   const nm = e => { const n=unitOf(army,e.unitId)?.name || 'Unidad'; const same=list.entries.filter(x=>x.unitId===e.unitId); return same.length>1 ? `${n} nº ${same.indexOf(e)+1}` : n };
@@ -1419,7 +1426,7 @@ function overFixes(list,army,over,nm){
 }
 function validate(list,army){
   const w=[]; if(!list||!army) return {w,count:{},lim:limits(0),total:0};
-  if(isTOW(army)) return validateTOW(list,army);
+  if(isTOW(army)){ const r=validateTOW(list,army); try{ towCollWarn(list,army,r.w) }catch(e){} return r }
   const lim=limits(list.points); if(army.extraChars) lim.chars+=army.extraChars; const count={lord:0,hero:0,core:0,special:0,rare:0};
   let total=0, allyTotal=0; const badAlly=new Map(); const slots={lord:[],hero:[],core:[],special:[],rare:[],ally:[],free:[]};
   const present=new Set(list.entries.map(e=>e.unitId));
@@ -1935,12 +1942,62 @@ function sugLibMatches(army){
     if(!coll) return true; const L=sugToList({unidades:r.units},army,pts); L.useColl=true; return !validate(L,army).w.some(w=>String(w.key).startsWith('coll-')) })
    .sort((a,b)=>(b.created||0)-(a.created||0));
 }
+// ---- (ok46) Listas sugeridas con «Tu colección»: nunca usar miniaturas que no tienes ----
+function collHard(L,army){ return validate(L,army).w.filter(x=>!x.soft) }
+function collTrim(L,army){
+  L.useColl=true; const used={}, out=[];
+  for(const e of L.entries){ if(isAlly(e)) continue; const u=unitOf(army,e.unitId); if(!u) continue;
+    const left=collHave(army.id,u.id)-(used[u.id]||0); if(left<=0) continue;
+    if(!u.single){ e.size=Math.min(e.size||u.min||1,left); if(u.max) e.size=Math.min(e.size,u.max); if(e.size<(u.min||1)) continue }
+    used[u.id]=(used[u.id]||0)+(u.single?1:e.size); out.push(e) }
+  L.entries=out;
+  for(const m of modelOpts(army)){ let over=collOptUsed(L,army,m.key)-collHave(army.id,m.key);
+    for(let i=L.entries.length-1;i>=0&&over>0;i--){ const e=L.entries[i], u=unitOf(army,e.unitId);
+      for(const o of (u?.options||[])){ if(over<=0) break; if(!isModelOpt(o)||optKey(o)!==m.key) continue;
+        if(o.kind==='qty'){ const q=qtyOf(e,o); if(q>0){ const d=Math.min(q,over); e.qty[o.id]=q-d; if(!e.qty[o.id]) delete e.qty[o.id]; over-=d } }
+        else if((e.opts||[]).includes(o.id)){ e.opts=e.opts.filter(x=>x!==o.id); over-=1 } } } }
+  for(const e of L.entries){ const u=unitOf(army,e.unitId); if(u){ try{ pruneOpts(e,u); clampEntry(e,u) }catch{} } }
+  return L }
+function collFill(L,army,pts,tpl){
+  tpl=tpl||{}; const score=()=>{ const v=validate(L,army); return [v.w.filter(x=>!x.soft).length, v.total] };
+  let [bad,tot]=score(); const order={core:0,special:1,rare:2,chars:3};
+  const catOf=u=>isChar(u)?'chars':(towBookCat?.(army,u)||u.cat);
+  const pool=(army.units||[]).filter(u=>collHave(army.id,u.id)>0 && true).sort((a,b)=>(order[catOf(a)]??3)-(order[catOf(b)]??3));
+  const tryAdd=(u,cfg)=>{ const left=collHave(army.id,u.id)-collUsed(L,u.id); if(left<(u.single?1:(u.min||1))) return false;
+    const e={id:rid(),unitId:u.id,size:u.single?1:Math.min(left,u.max||left,cfg?.size?Math.max(cfg.size,u.min||1):left),opts:[...(cfg?.opts||[])],items:[...(cfg?.items||[])],...(cfg?.qty?{qty:{...cfg.qty}}:{})};
+    L.entries.push(e); try{ pruneOpts(e,u) }catch{}
+    while(true){ try{ clampEntry(e,u) }catch{} const [b2,t2]=score(); if(t2<=pts && b2<=bad && !(isChar(u)&&b2===bad&&false)){ bad=b2; tot=t2; return true }
+      if(!u.single && e.size>(u.min||1) && t2>pts){ e.size=Math.max(u.min||1,e.size-Math.ceil((t2-pts)/Math.max(1,u.cost||1))); continue }
+      L.entries.pop(); return false } };
+  for(let pass=0;pass<4;pass++){ let changed=false;
+    for(const u of pool){ const cfgs=[...(tpl[u.id]||[]),...(tpl[u.id]||[]).map(c=>({...c,items:[]})),null]; for(const c of cfgs){ if(tryAdd(u,c)){ changed=true; break } } }
+    for(const e of L.entries){ const u=unitOf(army,e.unitId); if(!u||u.single||isChar(u)) continue;
+      while(collUsed(L,u.id)<collHave(army.id,u.id) && (!u.max||e.size<u.max)){ e.size++; const [b2,t2]=score(); if(t2>pts||b2>bad){ e.size--; break } bad=b2; tot=t2; changed=true } }
+    if(!changed) break }
+  return L }
+function collAdapt(L,army,pts,tpl){ collTrim(L,army); collFill(L,army,pts,tpl); return L }
+function collBest(army,lib,kind,pts,enemy){
+  const sameV=r=>(r.variant||null)===(army.variant?.id||null);
+  const cands=(lib||[]).filter(sameV).sort((a,b)=>((a.kind===kind&&(kind!=='partida'||a.enemy===enemy))?0:1)-((b.kind===kind&&(kind!=='partida'||b.enemy===enemy))?0:1)||Math.abs(Number(a.points)-pts)-Math.abs(Number(b.points)-pts)).slice(0,40);
+  const tpl={}; for(const r of cands) for(const x of r.units||[]){ const a=(tpl[x.unitId] ||= []); if(a.length<4 && !a.some(y=>JSON.stringify(y.opts||[])===JSON.stringify(x.opts||[]))) a.push(x) }
+  let best=null;
+  for(const r of cands){ const L=collAdapt(sugToList({unidades:r.units,nombre:r.name},army,pts),army,pts,tpl); L.points=pts; const v=validate(L,army); const bad=v.w.filter(x=>!x.soft).length;
+    if(!L.entries.length) continue; const k=[bad,-v.total]; if(!best||k[0]<best.k[0]||(k[0]===best.k[0]&&k[1]<best.k[1])) best={k,L,r,bad,total:v.total} }
+  return best }
+
 // Sin Claude (no disponible, sin permiso o uso agotado): se ofrece una lista guardada al azar de la biblioteca.
 async function sugFallback(army,why){
   const sg=S.sug ||= {}; await loadSugLib(army.id);
   let pool=sugLibMatches(army)||[]; const lib=Array.isArray(S.sugLib?.[army.id])?S.sugLib[army.id]:[];
   const kind=sg.kind||'torneo', pts=S.homePts||2000;
   const sameV=r=>(r.variant||null)===(army.variant?.id||null);
+  if(!pool.length && S.homeSrc==='coleccion'){
+    const b=collBest(army,lib,kind,pts,sg.enemy);
+    if(!b){ sg.error='Con las miniaturas de tu colección no se puede montar una lista. Añade miniaturas en Inicio › Tu colección o crea la lista tú mismo.'; return false }
+    b.L.name=String(b.r.name||b.L.name).slice(0,60);
+    sg.result={list:b.L,plan:b.r.plan||'',why:b.r.why||[],libId:null};
+    sg.error=null; sg.notice=`Lista adaptada a tu colección: solo usa miniaturas que tienes (${b.total} de ${pts} pts).`+(b.bad?' Revisa los avisos de la lista: con tu colección no se cumplen todas las reglas de composición.':'');
+    return true }
   if(!pool.length) pool=lib.filter(r=>sameV(r) && r.kind===kind && Number(r.points)===pts && !r.coll);
   if(!pool.length) pool=lib.filter(r=>sameV(r) && Number(r.points)===pts && !r.coll);
   if(!pool.length){ const std=[1000,2000,3000,4000]; const baseHas=lib.some(r=>!r.variant && Number(r.points)===pts);
@@ -2022,7 +2079,7 @@ DATOS DEL LIBRO:
 ${JSON.stringify(armyBrief(army))}`;
   try{
     const raw=await sample.json(prompt,{tools:[check],modelTier:'default',signal:ctl.signal,cache:false});
-    const L=sugToList(raw,army,pts); if(S.homeSrc==='coleccion') L.useColl=true; if(!L.entries.length) throw {code:'empty'};
+    let L=sugToList(raw,army,pts); if(S.homeSrc==='coleccion'){ L.useColl=true; if(validate(L,army).w.some(w=>String(w.key).startsWith('coll-'))) L=collAdapt(L,army,pts) } if(!L.entries.length) throw {code:'empty'};
     const nameSug = kind==='partida' ? `Óptima contra ${sg.enemy}` : `Torneo · ${army.name} ${pts} pts`;
     L.name=String(raw.nombre||nameSug).slice(0,60);
     const rec={armyId:army.id,...(army.variant?{variant:army.variant.id}:{}),points:pts,kind,enemy:kind==='partida'?sg.enemy:null,coll:S.homeSrc==='coleccion',name:(kind==='partida'?`Óptima contra ${sg.enemy}`:'Torneo')+' · '+L.name,plan:raw.plan||'',why:(raw.por_que||raw.why||[]).slice(0,6),
@@ -3336,7 +3393,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610271834';
+const APP_VER='202610291636';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
