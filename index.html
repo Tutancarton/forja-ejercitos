@@ -715,6 +715,8 @@ table.ed input.st{width:46px;min-width:46px;text-align:center}
 .upd-bar .upd-n{color:var(--muted)}
 abbr.rtip{text-decoration:underline dotted;text-underline-offset:2px;cursor:help}
 abbr.rtip[data-pop]{-webkit-tap-highlight-color:transparent}
+.rtip-pop div{white-space:pre-line}
+abbr.sp-tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
 .rtip-pop{position:fixed;z-index:1000;max-width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1.5px solid var(--accent);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:var(--f-body);font-size:.88rem;line-height:1.35;text-align:left}
 .rtip-pop b{display:block;color:var(--accent);margin-bottom:3px;font-size:.92rem}
 .gloss{margin-top:18px;border-top:2px solid var(--accent);padding-top:6px}.gloss h3{margin:0 0 6px}.gloss p{margin:4px 0;font-size:.88rem}
@@ -2470,9 +2472,14 @@ function statsTable(u,e){
   return `<div class="tscroll"><table class="stats"><thead><tr><th></th>${STATS.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>
   ${rows.map(p=>`<tr><td>${esc(p.name)}</td>${STATS.map(s=>`<td>${esc(p[s]??'-')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
+function spellTipText(s){ return [[s.cv&&('Dificultad '+s.cv),s.type,s.range].filter(Boolean).join(' · '),s.fx||'Consulta el libro.'].filter(Boolean).join('\n') }
+function spellTip(s){ return `<abbr class="rtip sp-tip" data-pop="1" tabindex="0" data-name="${esc(s.name)}" title="${esc(spellTipText(s))}">${esc(s.name)}</abbr>` }
+function loreOptInfo(o,army){ const ids=o.lores||(o.lore?[o.lore]:[]); if(!ids.length) return ''; const all=allLores(army); const ls=ids.map(i=>all.find(l=>l.id===i)).filter(Boolean); if(!ls.length) return '';
+  const t=ls.map(l=>(ls.length>1?l.name+':\n':'')+l.spells.map((s,i)=>`${SP_NUM(l,i)}. ${s.name} (${s.cv}) — ${String(s.fx||'').replace(/\s+/g,' ').slice(0,140)}${String(s.fx||'').length>140?'…':''}`).join('\n')).join('\n\n');
+  return ` <abbr class="rtip info-i" data-pop="1" tabindex="0" data-name="${esc(ls.map(l=>l.name).join(' / '))}" title="${esc(t)}">ⓘ</abbr>` }
 function loresHTML(lores,lv){
   if(!lores.length) return '';
-  return `<div class="sec"><h4>Magia · hechicero de nivel ${lv}</h4>${lores.map(l=>`<div class="lore"><b>${esc(l.name)}</b><ol>${l.spells.map(s=>`<li>${esc(s.name)} <span class="num">${esc(s.cv)}</span></li>`).join('')}</ol></div>`).join('')}</div>`;
+  return `<div class="sec"><h4>Magia · hechicero de nivel ${lv}</h4><p class="muted small" style="margin:0 0 4px">Pasa el ratón o toca un hechizo para ver sus reglas.</p>${lores.map(l=>`<div class="lore"><b>${esc(l.name)}</b><ol>${l.spells.map(s=>`<li>${spellTip(s)} <span class="num">${esc(s.cv)}</span></li>`).join('')}</ol></div>`).join('')}</div>`;
 }
 function canJoin(u){ return isChar(u) && (u.joinsUnits?.length || u.options?.some(o=>o.joinsUnits?.length)) }
 function joinBtn(e,u,list,army){
@@ -2545,7 +2552,7 @@ function detailHTML(e,list,army,gen){
       const on=e.opts.includes(o.id);
       const capd=isTOW(army)&&!on&&o.cnt&&u.optMax?.[o.cnt]!=null&&optsOf(e,u).filter(x=>x.cnt===o.cnt).length>=u.optMax[o.cnt];
       h+=`<label class="opt"${capd?' style="opacity:.55"':''}><input type="checkbox" name="${o.group?'g-'+esc(o.group):'o-'+o.id}" data-a="opt" data-v="${esc(o.id)}" ${on?'checked':''} ${capd?'disabled':''}>
-      <span>${esc(optLabel(o))}${isTOW(army)?towOptInfo(o):''}${o.group&&o.kind!=='mount'?` <span class="muted small">(${esc(o.group)})</span>`:''}${capd?` <span class="muted small">(máx. ${u.optMax[o.cnt]} ${esc((u.optMaxLabel||{})[o.cnt]||'')})</span>`:''}</span><span class="num">+${o.cost}${o.per==='model'?'/min.':''}</span></label>${on&&towUnitItems(e,u,army)?(o.items>0?towUnitItemsHTML(e,u,army,'champ'):o.kind==='standard'?towUnitItemsHTML(e,u,army,'banner'):''):''}`;
+      <span>${esc(optLabel(o))}${isTOW(army)?towOptInfo(o):''}${loreOptInfo(o,armyFor?armyFor(e,army):army)}${o.group&&o.kind!=='mount'?` <span class="muted small">(${esc(o.group)})</span>`:''}${capd?` <span class="muted small">(máx. ${u.optMax[o.cnt]} ${esc((u.optMaxLabel||{})[o.cnt]||'')})</span>`:''}</span><span class="num">+${o.cost}${o.per==='model'?'/min.':''}</span></label>${on&&towUnitItems(e,u,army)?(o.items>0?towUnitItemsHTML(e,u,army,'champ'):o.kind==='standard'?towUnitItemsHTML(e,u,army,'banner'):''):''}`;
     }
     h+='</div>';
   }
@@ -3393,7 +3400,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202610291636';
+const APP_VER='202611111936';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
