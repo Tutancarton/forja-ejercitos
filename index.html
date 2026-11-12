@@ -2225,8 +2225,7 @@ function sharePanel(list,army,compact){
   const f=(k,l)=>`<button class="chip ${fmt===k?'on':''}" data-a="shareFmt" data-v="${k}">${l}</button>`;
   return `<section class="sharepanel ${compact?'compact':''}">
     <div class="share-h"><b>${compact?'✓ Lista terminada · ':''}Imprimir, guardar o compartir</b></div>
-    <div class="share-row"><span class="small muted">Formato:</span>${f('lista','Lista de ejército')}${f('tarjetas','Tarjetas de unidad')}</div>
-    <div class="share-row"><label class="opt" title="Añade una página con el resumen de las reglas especiales y términos clave que aparecen en tu lista"><input type="checkbox" data-a="addRules" ${S.addRules?'checked':''}> + hoja de reglas especiales</label><label class="opt"><input type="checkbox" data-a="addSpells" ${S.addSpells?'checked':''}> + cartas de hechizos</label></div>
+    <div class="small muted" style="margin:2px 0 6px">Con el formato y las opciones que has elegido arriba${S.addRules||S.addSpells?' ('+[S.pdfFmt==='tarjetas'?'tarjetas de unidad':'lista de ejército',S.addRules?'hoja de reglas':'',S.addSpells?'cartas de hechizos':''].filter(Boolean).join(' + ')+')':' ('+(S.pdfFmt==='tarjetas'?'tarjetas de unidad':'lista de ejército')+')'}.</div>
     <div class="share-row">
       <button class="btn pri sbtn" data-a="sharePrint">🖨 Imprimir</button>
       <button class="btn sbtn" data-a="sharePdf">⬇ Guardar PDF</button>
@@ -3094,7 +3093,7 @@ async function exportPdf(fmtOverride,forPrint){
 /* Compartir como PDF: si el dispositivo permite compartir archivos (móvil), se abre el menú del sistema con el PDF adjunto
    (WhatsApp, Mail…). Si no, se guarda el PDF y se abre WhatsApp o el correo con un mensaje corto para adjuntarlo. */
 async function sharePdf(via){
-  const b=buildPdf(S.shareFmt||'lista'); if(!b) return; const {doc,name,list,army}=b;
+  const b=buildPdf(S.pdfFmt||S.shareFmt||'lista'); if(!b) return; const {doc,name,list,army}=b;
   const msg=`${list.name} · ${army.name} (${validate(list,army).total} pts)`;
   try{
     const file=new File([doc.output('blob')],name,{type:'application/pdf'});
@@ -3299,8 +3298,8 @@ document.addEventListener('click', async ev=>{
     case 'pdf': await exportPdf(); return;
     case 'shareFmt': S.shareFmt=v; break;
     case 'sharePdfVia': await sharePdf(v); return;
-    case 'sharePdf': await exportPdf(S.shareFmt||'lista',false); return;
-    case 'sharePrint': await exportPdf(S.shareFmt||'lista',true); return;
+    case 'sharePdf': await exportPdf(S.pdfFmt||S.shareFmt||'lista',false); return;
+    case 'sharePrint': await exportPdf(S.pdfFmt||S.shareFmt||'lista',true); return;
     case 'qty': { const [oid,d]=v.split('|'); ent.qty ||= {}; const o=u.options.find(x=>x.id===oid); ent.qty[oid]=Math.min(qtyMax(ent,u,o),Math.max(0,(ent.qty[oid]||0)+Number(d))); touch(list); break }
     case 'attachToggle': return;
     case 'warnOpen': S.warnOpen = S.warnOpen===v ? null : v; break;
@@ -3422,7 +3421,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202611121349';
+const APP_VER='202611121350';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
