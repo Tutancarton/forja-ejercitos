@@ -1105,6 +1105,11 @@ function sizeOf(e,u){ return u.single ? 1 : (e.size||u.min||1) }
 function optsOf(e,u){ return (u.options||[]).filter(o=>o.kind!=='qty' && e.opts?.includes(o.id)) }
 function qtyOf(e,o){ return (e.qty&&e.qty[o.id])||0 }
 function wizLevel(e,u){ const A=armyOf(curList()); return (u.wizard||0) + optsOf(e,u).filter(o=>o.kind==='wiz').reduce((s,o)=>s+(o.level||1),0) + (e.items||[]).reduce((s,id)=>s+((A&&itemOf(A,id))?.wizLevel||0),0) }
+function bsbBoxHTML(e,u,list,army,mainArmy){ if(isAlly(e)) return ''; const bo=(u.options||[]).find(o=>o.kind==='bsb' && (optionAvailable(e,u,o,list,mainArmy)||(e.opts||[]).includes(o.id))); if(!bo) return '';
+  const on=(e.opts||[]).includes(bo.id); const other=!on && list.entries.find(x=>x.id!==e.id && !isAlly(x) && hasBsb(x,unitOf(army,x.unitId)||{}));
+  const pts=bo.cost?` <span class="muted small">(+${bo.cost} pts)</span>`:'';
+  if(other) return `<span class="small muted genchk">Portaestandarte de Batalla: ${esc(unitOf(army,other.unitId)?.name||'otro personaje')}</span>`;
+  return `<label class="genchk"><input type="checkbox" data-a="opt" data-v="${esc(bo.id)}" ${on?'checked':''}> <span>Portaestandarte de Batalla${pts}</span></label>` }
 function hasBsb(e,u){ return optsOf(e,u).some(o=>o.kind==='bsb') }
 function hasStd(e,u){ return optsOf(e,u).some(o=>o.kind==='standard') }
 function bannerCap(e,u){
@@ -2546,7 +2551,7 @@ function detailHTML(e,list,army,gen){
   const mainArmy=army; army=armyFor(e,army);
   const u=unitOf(army,e.unitId); const ws=entryWarnings(e,army,list);
   let h=`<h2>${esc(isTOW(army)?({chars:'Personajes',core:'Unidades Básicas',special:'Unidades Especiales',rare:'Unidades Singulares'}[catGroups(list,army).find(g=>g.es.includes(e))?.k]||iconLabel(u)):CATL[u.cat])}</h2><div class="detail">
-    <div class="dhead"><div class="dtitle">${iconImg(u,'d-icon')}<h3>${esc(u.name)}</h3></div>${isChar(u)?`<div class="dactions">${joinBtn(e,u,list,army)}${noGenU(army,u)||isAlly(e)?`<span class="small muted">No puede ser el General</span>`:`<label class="genchk" title="Si no eliges ninguno, es General el de mayor Liderazgo"><input type="checkbox" data-a="setGen" ${markedGenerals(list).includes(e)?'checked':''}><span>Elegir como General</span></label>`}</div>`:''}<span class="num big dpts">${entryCost(e,army)} pts</span></div>`;
+    <div class="dhead"><div class="dtitle">${iconImg(u,'d-icon')}<h3>${esc(u.name)}</h3></div>${isChar(u)?`<div class="dactions">${joinBtn(e,u,list,army)}${bsbBoxHTML(e,u,list,army,mainArmy)}${noGenU(army,u)||isAlly(e)?`<span class="small muted">No puede ser el General</span>`:`<label class="genchk" title="Si no eliges ninguno, es General el de mayor Liderazgo"><input type="checkbox" data-a="setGen" ${markedGenerals(list).includes(e)?'checked':''}><span>Elegir como General</span></label>`}</div>`:''}<span class="num big dpts">${entryCost(e,army)} pts</span></div>`;
   if(canJoin(u)) h+=attachHTML(e,u,list,army);
   if(ws.length) h+=`<ul class="warns">${ws.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   if(!u.single) h+=`<div class="sec"><h4>Miniaturas (${u.cost} pts c/u${u.base?`, +${u.base} incluidos`:''}${u.min?`, mín. ${u.min}`:''}${u.max?`, máx. ${u.max}`:''})</h4>
@@ -2556,7 +2561,7 @@ function detailHTML(e,list,army,gen){
     ${u.equip?`<p class="small" style="margin:6px 0 0"><b>Equipo:</b> ${esc(u.equip)}</p>`:''}
     ${effRules(e,u)?`<p class="small" style="margin:4px 0 0"><b>Reglas especiales:</b> ${rulesHTML(effRules(e,u))}</p>`:''}
     ${u.notes?`<p class="small muted" style="margin:4px 0 0">${esc(u.notes)}</p>`:''}${towInfoHTML(e,u)}${optDetailHTML(e,u)}</div>`;
-  const visible=(u.options||[]).filter(o=>optionAvailable(e,u,o,list,mainArmy));
+  const visible=(u.options||[]).filter(o=>optionAvailable(e,u,o,list,mainArmy)&&o.kind!=='bsb');
   if(visible.length){
     h+=`<div class="sec"><h4>Opciones y mejoras</h4>`;
     for(const o of visible){
@@ -3417,7 +3422,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202611121347';
+const APP_VER='202611121349';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
