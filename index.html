@@ -1693,7 +1693,7 @@ const GUIDE=[
  {id:'hoja',t:'Hoja de ejército, PDF y compartir',b:`<p>En la pestaña <b>Hoja de ejército</b> ves tu lista lista para jugar y puedes exportarla:</p>
   <ul><li><b>Formato del PDF</b>: «Lista de ejército» (compacta) o «Tarjetas de unidad» (una tarjeta por unidad).</li>
   <li>Añade, si quieres, la <b>hoja de reglas especiales y términos clave</b> y las <b>cartas de hechizos</b> (de tus hechiceros o de todo el ejército).</li>
-  <li><b>Descargar PDF</b>, <b>Copiar como texto</b> o compartir por WhatsApp o email, o imprimir.</li></ul>`},
+  <li>En «Imprimir, guardar o compartir»: <b>Imprimir</b>, <b>Guardar PDF</b>, enviar por WhatsApp o email, o <b>Copiar texto</b>.</li></ul>`},
  {id:'listas',t:'Mis listas',b:`<p>En <b>Mis listas</b> tienes todas tus listas: puedes abrirlas, duplicarlas para hacer variantes o borrarlas.</p>
   <ul><li>Con sesión iniciada en Claude, tus listas se guardan en tu cuenta.</li>
   <li>Sin sesión, se guardan en este navegador: si cambias de ordenador o borras los datos del navegador, se pierden. Para conservarlas, expórtalas a PDF o como texto.</li></ul>`},
@@ -2630,7 +2630,6 @@ function viewSheet(){
     ${S.addSpells?`<fieldset class="fmt"><legend>Qué saberes</legend>
       <label><input type="radio" name="spscope" value="lista" data-a="spScope" ${S.spScope!=='todo'?'checked':''}> Los de mis hechiceros</label>
       <label><input type="radio" name="spscope" value="todo" data-a="spScope" ${S.spScope==='todo'?'checked':''}> Todos los del ejército</label></fieldset>`:''}
-    <div class="row"><button class="btn pri" data-a="pdf">Descargar PDF</button><button class="btn" data-a="copyText">Copiar como texto</button></div>
   </div>`;
   h+=`<div style="max-width:900px;margin:12px auto 0">${sharePanel(list,army,false)}</div>`;
   if(probs) h+=`<p class="note" style="max-width:900px;margin:12px auto 0">La lista tiene ${probs} problema(s) de composición. Puedes exportarla igualmente.</p>`;
@@ -3421,7 +3420,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202611121350';
+const APP_VER='202611121354';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
