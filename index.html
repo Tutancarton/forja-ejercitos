@@ -716,6 +716,13 @@ table.ed input.st{width:46px;min-width:46px;text-align:center}
 abbr.rtip{text-decoration:underline dotted;text-underline-offset:2px;cursor:help}
 abbr.rtip[data-pop]{-webkit-tap-highlight-color:transparent}
 .rtip-pop div{white-space:pre-line}
+.odet{margin:8px 0 2px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;background:var(--surface);font-size:.88rem;line-height:1.4}
+.odet-h{font-weight:700;color:var(--accent)}.odet-sub{font-size:.8rem;color:var(--muted);margin-bottom:4px}
+.odet p{margin:4px 0}
+.odet-t{width:100%;border-collapse:collapse;margin-top:6px;font-size:.84rem}
+.odet-t caption{text-align:left;font-weight:700;padding:2px 0 4px}
+.odet-t td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:top}
+.odet-t td.num{white-space:nowrap;font-weight:700;width:3.2em;text-align:center}
 abbr.sp-tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
 .rtip-pop{position:fixed;z-index:1000;max-width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1.5px solid var(--accent);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:var(--f-body);font-size:.88rem;line-height:1.35;text-align:left}
 .rtip-pop b{display:block;color:var(--accent);margin-bottom:3px;font-size:.92rem}
@@ -1020,8 +1027,8 @@ function validateTOW(list,army){
     if(list.entries.length && a!==b) w.push({key:`eq-${q.label}`, t:`${q.label} (ahora: ${a} y ${b}).`, help:'Añade o quita unidades hasta que haya el mismo número.', actions:[...q.a,...q.b].map((id,i)=>({a:'addUnit',v:id,label:`Añadir ${unitOf(army,id)?.name||id}`,pri:i===0}))}) }
   if(comp.mustMount) for(const e of list.entries){ const u=unitOf(army,e.unitId); if(u&&isChar(u)&&!isAlly(e)&&!optsOf(e,u).some(o=>o.kind==='mount')&&(u.options||[]).some(o=>o.kind==='mount')) w.push({key:`mnt-${e.id}`, t:`${nm(e)} debe ir montado en esta lista de ejército.`, help:'Elige una montura en su ficha.', actions:[go(e)]}) }
   if(gen && !isAlly(gen) && asg[gen.id]==='merc') w.push({key:'genmerc', t:`${nm(gen)} es un mercenario y no puede ser el General.`, help:'El General debe ser uno de los personajes de la sección Personajes de la lista de composición.', actions:[go(gen)]});
-  if(gen && !isAlly(gen) && unitOf(army,gen.unitId)?.noGeneral) w.push({key:'nogenu', t:`${nm(gen)} no puede ser el General.`, help:'Elige como General a otro personaje con «Elegir como General».', actions:[go(gen)]});
-  if(gen && !isAlly(gen)){ const gu=unitOf(army,gen.unitId); const okGen=e=>{ const u=unitOf(army,e.unitId); return u && !isAlly(e) && isChar(u) && !u.noGeneral && (!hasBsb(e,u)||u.bsbGeneral) && !/(^|,\s*)Solitario/i.test(u.rules||'') && towBookCat(army,u)!=='merc'
+  if(gen && !isAlly(gen) && noGenU(army,unitOf(army,gen.unitId))) w.push({key:'nogenu', t:`${nm(gen)} no puede ser el General.`, help:'Elige como General a otro personaje con «Elegir como General».', actions:[go(gen)]});
+  if(gen && !isAlly(gen)){ const gu=unitOf(army,gen.unitId); const okGen=e=>{ const u=unitOf(army,e.unitId); return u && !isAlly(e) && isChar(u) && !noGenU(army,u) && (!hasBsb(e,u)||u.bsbGeneral) && !/(^|,\s*)Solitario/i.test(u.rules||'') && towBookCat(army,u)!=='merc'
         && (!comp.genFrom||comp.genFrom.includes(u.id)) && (!comp.genWizard||wizLevel(e,u)) && !(e.items||[]).some(id=>itemOf(army,id)?.notGeneral) };
     if(gu && !gu.mustGeneral && !list.entries.some(e=>!isAlly(e)&&unitOf(army,e.unitId)?.mustGeneral)){ const gl=leadership(gu); const better=list.entries.filter(e=>e.id!==gen.id && okGen(e) && leadership(unitOf(army,e.unitId))>gl);
       if(better.length){ const top=Math.max(...better.map(e=>leadership(unitOf(army,e.unitId)))); const best=better.filter(e=>leadership(unitOf(army,e.unitId))===top);
@@ -1587,7 +1594,7 @@ function validate(list,army){
   for(const e of list.entries){ const u0=unitOf(army,e.unitId); if(!u0||isAlly(e)) continue; for(const o of optsOf(e,u0)) if(o.requiresGen && !(genU && o.requiresGen.includes(genU.id))) w.push({key:`rg-${e.id}-${o.id}`, t:`${nm(e)}: «${o.name}» solo si el General es ${o.requiresGen.map(id=>unitOf(army,id)?.name).filter(Boolean).join(' o ')}.`, help:'Cambia el General o quita esa opción.', actions:[go(e)]}) }
   for(const e of list.entries){ const u0=unitOf(army,e.unitId); if(!u0||isAlly(e)||!u0.bansUnits) continue; const bad=list.entries.filter(x=>u0.bansUnits.includes(x.unitId));
     if(bad.length) w.push({key:`ban-${e.id}`, t:`Con ${u0.name} no puedes incluir: ${[...new Set(bad.map(x=>unitOf(army,x.unitId)?.name))].join(', ')}.`, help:u0.banHelp||`El libro no permite estas unidades en un ejército con ${u0.name}. Quítalas.`, actions:bad.map(x=>({a:'askRm',v:x.id,label:`Quitar ${nm(x)}`}))}) }
-  if(genE && genU?.noGeneral) w.push({key:'nogen-u', t:`${genU.name} nunca puede ser el General.`, help:'Elige como General a otro personaje con «Elegir como General».', actions:[go(genE)]});
+  if(genE && noGenU(army,genU)) w.push({key:'nogen-u', t:`${genU.name} nunca puede ser el General.`, help:'Elige como General a otro personaje con «Elegir como General».', actions:[go(genE)]});
   const mustE=list.entries.filter(x=>unitOf(army,x.unitId)?.mustGeneral); if(mustE.length && genE && !mustE.includes(genE)) w.push({key:'mustgen', t:`${unitOf(army,mustE[0].unitId).name} tiene que ser el General.`, help:'Márcalo con «Elegir como General».', actions:[{a:'keepGen',v:mustE[0].id,label:`Hacer General a ${nm(mustE[0])}`,pri:true}]});
   for(const id in perArmy){const u=unitOf(army,id); if(u?.maxPer && !lifted(u) && perArmy[id].length>u.maxPer) w.push({key:`max-${id}`, t:`${u.name}: máximo ${u.maxPer} por ejército.`,
     help:`Solo puedes incluir ${u.maxPer} ${u.name} y tienes ${perArmy[id].length}. Quita ${perArmy[id].length-u.maxPer} con la × de Tu lista o desde su ficha.`,
@@ -1601,15 +1608,17 @@ function validate(list,army){
   return {w,count,lim,total,chars,allyTotal:r1(allyTotal),allyMax,slots};
 }
 function markedGenerals(list){
-  const m=list.entries.filter(e=>e.general && !isAlly(e));
+  const A=(typeof armyOf==='function')?armyOf(list):null; const m=list.entries.filter(e=>e.general && !isAlly(e) && !(A&&noGenU(A,unitOf(A,e.unitId))));
   if(!m.length && list.generalId){ const g=list.entries.find(e=>e.id===list.generalId); if(g) return [g] }   // older lists
   return m;
 }
+const NO_GEN={skaven:['asesino','snikch'],elfososcuros:['asesino','shadowblade'],tow_sk:['asesino'],tow_de:['asesino']};
+function noGenU(army,u){ return !!u && (!!u.noGeneral || (NO_GEN[army?.id]||[]).includes(u.id) || (NO_GEN[army?.base||'']||[]).includes(u.id)) }
 function generalOf(list,army){
   const m=markedGenerals(list); if(m.length) return m[0];
   let best=null,bl=-1;
   const must=list.entries.find(e=>!isAlly(e)&&unitOf(army,e.unitId)?.mustGeneral); if(must) return must;
-  for(const e of list.entries){const u=unitOf(army,e.unitId); if(!isAlly(e)&&isChar(u)&&!hasBsb(e,u)&&!u.noGeneral&&(!army?.generalFrom||army.generalFrom.includes(u.id))&&!(e.items||[]).some(id=>itemOf(army,id)?.notGeneral)){const l=leadership(u); if(l>bl){bl=l;best=e}}}
+  for(const e of list.entries){const u=unitOf(army,e.unitId); if(!isAlly(e)&&isChar(u)&&!hasBsb(e,u)&&!noGenU(army,u)&&(!army?.generalFrom||army.generalFrom.includes(u.id))&&!(e.items||[]).some(id=>itemOf(army,id)?.notGeneral)){const l=leadership(u); if(l>bl){bl=l;best=e}}}
   return best;
 }
 
@@ -2376,8 +2385,14 @@ function cardNotes(x){ const n0=x.u.notes||''; const n=(x.lv||x.lores?.length) &
 function towInfos(e,u){ return optsOf(e,u||{}).filter(o=>o.info && !o.team) }
 function towTeams(x){ if(!x?.e||x.team) return []; return optsOf(x.e,x.u).filter(o=>o.team).map(o=>({team:true,e:x.e,u:{...x.u,name:o.team.name,single:true,equip:o.team.equip,rules:o.team.rules,notes:o.team.text,peana:o.team.peana,house:false,ally:null},
   n:1,cost:'+'+o.cost,gen:false,bsb:false,desc:[],stats:o.team.stats,lores:[],lv:0,joinedTo:entryTitle(x),joiners:[]})) }
+const MOUNT_PEANA={"Corcel de Guerra Catayano": {"p": "30×60"}, "Linterna Celeste (montura)": {"p": "100×100"}, "Carro de Tuskgors (0-1 por cada 1.000 pts)": {"p": "50×100"}, "Carro de Garragors (0-1 por cada 1.000 pts)": {"p": "50×100"}, "Carro de Tuskgors": {"p": "50×100"}, "Caballo de Guerra Bretoniano": {"p": "30×60"}, "Pegaso con Barda": {"p": "40×60"}, "Pegaso Real": {"p": "50×50"}, "Hipogrifo": {"p": "50×50"}, "Caballo de Guerra": {"p": "25×50"}, "Unicornio": {"p": "40×60"}, "Juggernaut de Khorne": {"p": "50×75"}, "Trono de Sangre de Khorne": {"p": "50×100"}, "Palanquín de Nurgle": {"p": "50×50"}, "Corcel de Slaanesh": {"p": "30×60"}, "Carro de la Demencia": {"p": "50×100"}, "Glorioso Carro de la Demencia": {"p": "100×150"}, "Disco de Tzeentch": {"p": "50×50"}, "Carro de Tzeentch": {"p": "50×100"}, "Carro Flamígero de Tzeentch": {"p": "50×100"}, "Corcel del Caos": {"p": "30×60"}, "Montura Demoníaca": {"p": "40×60"}, "Carro del Caos": {"p": "60×100"}, "Carro de Bestia Sangrienta": {"p": "60×100"}, "Mantícora": {"p": "60×100"}, "Dragón del Caos": {"p": "100×150"}, "Corcel Oscuro": {"p": "30×60"}, "Gélido": {"p": "30×60"}, "Carro de Gélidos": {"p": "50×100"}, "Dragón Negro": {"p": "60×100"}, "Pegaso Negro": {"p": "40×60"}, "Carro Fustigador": {"p": "50×100"}, "Caldero de Sangre": {"p": "60×100"}, "Calamitauro": {"p": "60×100"}, "Gran Tauro": {"p": "60×100"}, "Lammasu": {"p": "50×75"}, "Lobo Gigante": {"p": "25×50"}, "Jabalí de Guerra": {"p": "30×60"}, "Carro de Jabalíes": {"p": "50×100"}, "Serpiente Alada": {"p": "50×100"}, "Caballo de guerra con barda": {"p": "30×60"}, "Caballo de guerra": {"p": "30×60"}, "Pegaso": {"p": "40×60"}, "Semigrifo": {"p": "50×75"}, "Grifo": {"p": "50×50"}, "Grifo Imperial": {"p": "60×100"}, "Altar de Guerra de Sigmar (0-1)": {"p": "60×100"}, "Carro de Guerra": {"p": "60×100", "a": {"tow_tk": "50×100"}}, "Carro del Capitán": {"p": "50×100"}, "Corcel Élfico": {"p": "30×60"}, "Corcel Élfico con Barda": {"p": "30×60"}, "Dragón Solar (Sangre de Caledor)": {"p": "60×100"}, "Dragón Lunar": {"p": "60×100"}, "Dragón Estelar": {"p": "60×100"}, "Águila Gigante": {"p": "50×50"}, "Fénix Pico Llameante (Ungido de Asuryan)": {"p": "50×100"}, "Fénix Corazón Gélido (Ungido de Asuryan)": {"p": "50×100"}, "Carro de Leones (Cazador de Cracia)": {"p": "50×100"}, "Escolta Celeste (Guardia del Mar)": {"p": "60×100"}, "Carro de Tiranoc": {"p": "50×100"}, "Carnosaurio": {"p": "50×100"}, "Estegadón Pellejoduro": {"p": "60×100"}, "Terradón": {"p": "40×40"}, "Rajadáctilo": {"p": "40×40"}, "Estegadón": {"p": "60×100"}, "Karro de Jabalíes": {"p": "50×100"}, "Araña Gigantesca": {"p": "50×50"}, "Karro de Lobos": {"p": "50×100"}, "Araña Aracnarok": {"p": "100×150"}, "Garrapato Cavernícola Gigante": {"p": "50×50"}, "Cuernos Pétreos": {"p": "100×150"}, "Colmillos Trueno": {"p": "100×150"}, "Campana Gritona": {"p": "60×100"}, "Pebetero de Plaga": {"p": "60×100"}, "Corcel Esquelético": {"p": "25×50", "a": {"tow_vc": "30×60"}}, "Corcel Esquelético con Barda": {"p": "30×60"}, "Dragón de Hueso Necrolítico": {"p": "100×150"}, "Esfinge de Guerra de Khemri": {"p": "60×100"}, "Pesadilla": {"p": "30×60"}, "Trono del Aquelarre": {"p": "50×100"}, "Terror Abismal": {"p": "50×100"}, "Dragón Zombi": {"p": "100×150"}, "Sagrario Mortis": {"p": "50×100"}, "Engendro del Terror": {"p": "100×150"}, "Gran Ciervo": {"p": "50×50"}, "Halcón de Guerra": {"p": "50×50"}, "Dragón del Bosque": {"p": "60×100"}};
+function peanaOf(e,u){ if(!u) return ''; if(e && !e.team){ const m=(()=>{ try{ return mountOf(e,u) }catch{ return null } })(); if(m){ const n=String(m.name).replace(/^Montura:\s*/i,''); const q=MOUNT_PEANA[n], aid=(typeof curList==='function'?curList()?.armyId:null); const ab=q?.a?.[aid]; const p=m.peana||(ab&&(ab.peana||ab))||q?.p; if(p) return p } } return u.peana||'' }
+function PE(x){ return x?.team ? (x.u?.peana||'') : peanaOf(x?.e,x?.u) }
 function peanaIcon(p){ const m=String(p).match(/(\d+)×(\d+)/); if(!m) return ''; const a=+m[1], b=+m[2], k=14/Math.max(a,b,50)*1.6, w=Math.max(6,Math.round(a*k/1.6)), h=Math.max(6,Math.round(b*k/1.6));
   return `<span class="peana" title="Peana de ${esc(p)} mm"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><rect x="0.75" y="0.75" width="${w-1.5}" height="${h-1.5}" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>${esc(p)}</span>` }
+function optDetails(e,u){ try{ return optsOf(e,u).filter(o=>o.detail) }catch{ return [] } }
+function optDetailHTML(e,u){ return optDetails(e,u).map(o=>{ const d=o.detail; return `<div class="odet"><div class="odet-h">${esc(d.title||o.name)}</div>${d.sub?`<div class="odet-sub">${esc(d.sub)}</div>`:''}${(d.lines||[]).map(([n,t])=>`<p><b>${esc(n)}.</b> ${esc(t)}</p>`).join('')}${d.table?`<table class="odet-t"><caption>${esc(d.table.title)}</caption><tbody>${d.table.rows.map(r=>`<tr><td class="num">${esc(r[0])}</td><td><b>${esc(r[1])}.</b> ${esc(r[2])}</td></tr>`).join('')}</tbody></table>`:''}</div>` }).join('') }
+function optDetailText(e,u){ return optDetails(e,u).map(o=>{ const d=o.detail; return [(d.title||o.name)+(d.sub?' ('+d.sub+')':'')+':',...(d.lines||[]).map(([n,t])=>n+'. '+t),...(d.table?[d.table.title+':',...d.table.rows.map(r=>r[0]+' '+r[1]+'. '+r[2])]:[])].join('\n') }).join('\n\n') }
 function towInfoHTML(e,u){ const opts=(u.options||[]).filter(o=>o.info||o.team); if(!opts.length) return '';
   const on=optsOf(e,u); const line=o=>`<p class="small" style="margin:4px 0 0"><b>${esc(o.team?o.team.name:o.name)}:</b> ${esc(o.team?o.team.equip+' '+o.team.text:o.info)}</p>`;
   const ch=opts.filter(o=>on.includes(o)), rest=opts.filter(o=>!on.includes(o));
@@ -2531,16 +2546,16 @@ function detailHTML(e,list,army,gen){
   const mainArmy=army; army=armyFor(e,army);
   const u=unitOf(army,e.unitId); const ws=entryWarnings(e,army,list);
   let h=`<h2>${esc(isTOW(army)?({chars:'Personajes',core:'Unidades Básicas',special:'Unidades Especiales',rare:'Unidades Singulares'}[catGroups(list,army).find(g=>g.es.includes(e))?.k]||iconLabel(u)):CATL[u.cat])}</h2><div class="detail">
-    <div class="dhead"><div class="dtitle">${iconImg(u,'d-icon')}<h3>${esc(u.name)}</h3></div>${isChar(u)?`<div class="dactions">${joinBtn(e,u,list,army)}<label class="genchk" title="Si no eliges ninguno, es General el de mayor Liderazgo"><input type="checkbox" data-a="setGen" ${markedGenerals(list).includes(e)?'checked':''}><span>Elegir como General</span></label></div>`:''}<span class="num big dpts">${entryCost(e,army)} pts</span></div>`;
+    <div class="dhead"><div class="dtitle">${iconImg(u,'d-icon')}<h3>${esc(u.name)}</h3></div>${isChar(u)?`<div class="dactions">${joinBtn(e,u,list,army)}${noGenU(army,u)||isAlly(e)?`<span class="small muted">No puede ser el General</span>`:`<label class="genchk" title="Si no eliges ninguno, es General el de mayor Liderazgo"><input type="checkbox" data-a="setGen" ${markedGenerals(list).includes(e)?'checked':''}><span>Elegir como General</span></label>`}</div>`:''}<span class="num big dpts">${entryCost(e,army)} pts</span></div>`;
   if(canJoin(u)) h+=attachHTML(e,u,list,army);
   if(ws.length) h+=`<ul class="warns">${ws.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   if(!u.single) h+=`<div class="sec"><h4>Miniaturas (${u.cost} pts c/u${u.base?`, +${u.base} incluidos`:''}${u.min?`, mín. ${u.min}`:''}${u.max?`, máx. ${u.max}`:''})</h4>
     <div class="stepper"><button data-a="size" data-v="-1" aria-label="Quitar una" ${e.size<=sizeMin(u)?'disabled':''}>−</button><input type="number" class="num" id="esize" value="${e.size}" min="${sizeMin(u)}" ${isFinite(sizeMax(u))?`max="${sizeMax(u)}"`:''}><button data-a="size" data-v="1" aria-label="Añadir una" ${e.size>=sizeMax(u)?'disabled':''}>+</button>
     <button class="btn small" data-a="size" data-v="5" ${e.size>=sizeMax(u)?'disabled':''}>+5</button></div></div>`;
-  h+=`<div class="sec"><h4>Atributos${u.peana?' '+peanaIcon(u.peana):''}</h4>${statsTable(u,e)}${towSaves(e,u,army)}
+  h+=`<div class="sec"><h4>Atributos${peanaOf(e,u)?' '+peanaIcon(peanaOf(e,u)):''}</h4>${statsTable(u,e)}${towSaves(e,u,army)}
     ${u.equip?`<p class="small" style="margin:6px 0 0"><b>Equipo:</b> ${esc(u.equip)}</p>`:''}
     ${effRules(e,u)?`<p class="small" style="margin:4px 0 0"><b>Reglas especiales:</b> ${rulesHTML(effRules(e,u))}</p>`:''}
-    ${u.notes?`<p class="small muted" style="margin:4px 0 0">${esc(u.notes)}</p>`:''}${towInfoHTML(e,u)}</div>`;
+    ${u.notes?`<p class="small muted" style="margin:4px 0 0">${esc(u.notes)}</p>`:''}${towInfoHTML(e,u)}${optDetailHTML(e,u)}</div>`;
   const visible=(u.options||[]).filter(o=>optionAvailable(e,u,o,list,mainArmy));
   if(visible.length){
     h+=`<div class="sec"><h4>Opciones y mejoras</h4>`;
@@ -2746,14 +2761,14 @@ function pdfSpellCards7(list,army,into){
 }
 function cardHTML(x,cat){
   return `<div class="ucard"><div class="uc-h">${iconImg(x.u,'uc-icon')}<span class="uc-t">${esc(entryTitle(x))}</span><span class="num">${x.cost} pts</span></div>
-   <div class="uc-b"><div class="small muted">${x.u.peana?peanaIcon(x.u.peana):''}${esc(cat)}${x.gen?' · General':''}${x.bsb?' · Portaestandarte de batalla':''}${x.joinedTo?' · Unido a '+esc(x.joinedTo):''}</div>
+   <div class="uc-b"><div class="small muted">${PE(x)?peanaIcon(PE(x)):''}${esc(cat)}${x.gen?' · General':''}${x.bsb?' · Portaestandarte de batalla':''}${x.joinedTo?' · Unido a '+esc(x.joinedTo):''}</div>
    ${statsTable({stats:x.stats})}
    ${x.u.equip?`<p><b>Equipo:</b> ${esc(x.u.equip)}</p>`:''}
    ${x.desc.length?`<p><b>Opciones y objetos:</b> ${esc(x.desc.join(', '))}</p>`:''}
    ${x.joiners.length?`<p><b>Con:</b> ${esc(x.joiners.join(', '))}</p>`:''}
    ${towSaves(x.e,x.u,armyFor(x.e,armyOf(curList())))}${effRules(x.e,x.u)?`<p><b>Reglas especiales:</b> ${rulesHTML(effRules(x.e,x.u))}</p>`:''}
    ${x.lv?`<p><b>Hechicero de nivel ${x.lv}</b></p>`:''}
-   ${cardNotes(x)?`<p class="muted">${esc(cardNotes(x))}</p>`:''}</div></div>`;
+   ${cardNotes(x)?`<p class="muted">${esc(cardNotes(x))}</p>`:''}${x.e&&!x.team?optDetailHTML(x.e,x.u):''}</div></div>`;
 }
 function rosterText(list,army){
   const v=validate(list,army); let t=`${list.name}\n${army.name} — ${v.total}/${list.points} pts\n`;
@@ -2826,14 +2841,14 @@ function pdfCard(doc,x,y,w,cat,d,draw,th){
     doc.text(doc.splitTextToSize(entryTitle(d),w-34)[0],x+11.5,y+6.5); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text(`${d.cost} pts`,x+w-pad,y+6.5,{align:'right'}) }
   h+=11;
   const sub=[cat,d.gen?'General':'',d.bsb?'Portaestandarte de batalla':'',d.joinedTo?'Unido a '+d.joinedTo:''].filter(Boolean).join(' · ');
-  if(draw){ doc.setFont('helvetica','italic'); doc.setFontSize(7.2); doc.setTextColor(90); doc.text(doc.splitTextToSize(sub,iw-(d.u.peana?20:0))[0],x+pad,y+h+2.6);
-    const pm=String(d.u.peana||'').match(/(\d+)×(\d+)/); if(pm){ const a=+pm[1], b=+pm[2], s=3.2/Math.max(a,b,25)*Math.max(a,b)/Math.max(a,b)*1, rw=Math.max(1.6,a/25*1.6), rh=Math.max(1.6,b/25*1.6), sc=Math.min(1,3.4/Math.max(rw,rh)), RW=rw*sc, RH=rh*sc;
-      doc.setFont('helvetica','normal'); doc.setFontSize(6.6); doc.setTextColor(90); const tw=doc.getTextWidth(d.u.peana); doc.text(d.u.peana,x+w-pad,y+h+2.6,{align:'right'});
+  if(draw){ doc.setFont('helvetica','italic'); doc.setFontSize(7.2); doc.setTextColor(90); doc.text(doc.splitTextToSize(sub,iw-(PE(d)?20:0))[0],x+pad,y+h+2.6);
+    const pm=String(PE(d)||'').match(/(\d+)×(\d+)/); if(pm){ const a=+pm[1], b=+pm[2], s=3.2/Math.max(a,b,25)*Math.max(a,b)/Math.max(a,b)*1, rw=Math.max(1.6,a/25*1.6), rh=Math.max(1.6,b/25*1.6), sc=Math.min(1,3.4/Math.max(rw,rh)), RW=rw*sc, RH=rh*sc;
+      doc.setFont('helvetica','normal'); doc.setFontSize(6.6); doc.setTextColor(90); const tw=doc.getTextWidth(PE(d)); doc.text(PE(d),x+w-pad,y+h+2.6,{align:'right'});
       doc.setDrawColor(90); doc.setLineWidth(0.25); doc.rect(x+w-pad-tw-1.2-RW,y+h+2.6-RH*0.8-0.3,RW,RH) } }
   h+=4;
   h+=pdfStats(doc,d.stats,x+pad,y+h,iw,draw);
   const paras=[['Equipo:',d.u.equip],['Opciones y objetos:',d.desc.join(', ')],['Con:',d.joiners.join(', ')],['Salvaciones:',towSaves(d.e,d.u,armyFor(d.e,armyOf(curList()))).replace(/<[^>]+>/g,'').replace(/^Salvaciones:\s*/,'').replace(/\s*\(calculado[^)]*\)/,'')],['Reglas especiales:',effRules(d.e,d.u)],
-    d.lv?['Hechicero:',`nivel ${d.lv}`]:['',''],['',cardNotes(d)]];
+    d.lv?['Hechicero:',`nivel ${d.lv}`]:['',''],['',cardNotes(d)],...(d.e&&!d.team?optDetailText(d.e,d.u).split('\n').filter(Boolean).map(t=>['',t]):[])];
   for(const [lab,txt] of paras) h+=pdfPara(doc,lab,txt,x+pad,y+h,iw,draw,7.2);
   h+=pad;
   if(draw){ doc.setDrawColor(...th.rule); doc.setLineWidth(0.4); doc.rect(x,y,w,h); doc.setLineWidth(0.2) }
@@ -3400,7 +3415,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202611111936';
+const APP_VER='202611112004';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
