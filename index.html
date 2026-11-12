@@ -2664,10 +2664,12 @@ function viewSheet(){
 function armyLoreIds(army){
   const ids=new Set(); if(isTOW(army)) for(const l of army.lores||[]) if(l.extra) ids.add(l.id); for(const u of army.units||[]){ (u.lores||[]).forEach(x=>ids.add(x)); for(const o of u.options||[]) if(o.lore) ids.add(o.lore) } return ids;
 }
+const RULE_LORE={'Saber de la Rata Cornuda':'ratacornuda'};
 function spellLores(list,army){
   const all=allLores(army); let ids;
   if(S.spScope==='todo') ids=armyLoreIds(army);
-  else { ids=new Set(); for(const e of list.entries){ const u=unitOf(army,e.unitId); if(!u) continue; for(const l of loresOf(e,u,army)) ids.add(l.id) } }
+  else { ids=new Set(); for(const e of list.entries){ const u=unitOf(army,e.unitId); if(!u) continue; const ls=loresOf(e,u,army); for(const l of ls) ids.add(l.id);
+    if(ls.length){ const rs=String((typeof effRules==='function'?effRules(e,u):u.rules)||''); for(const [rn,lid] of Object.entries(RULE_LORE)) if(rs.includes(rn)) ids.add(lid) } } }
   return all.filter(l=>ids.has(l.id));
 }
 const SP_NUM = (l,i) => l.spells.length>1 ? String(i+1) : '★';
@@ -3415,7 +3417,7 @@ document.addEventListener('submit', ev=>{
   saveList(l); S.listId=l.id; LS.set('forja.cur',l.id); S.newList=false; S.sel=null; S.tab='lista'; S.mpanel='libro'; render();
 });
 try{S.addRules=localStorage.getItem('forja.addRules')==='1'; S.addSpells=localStorage.getItem('forja.addSpells')==='1'}catch{}
-const APP_VER='202611112004';
+const APP_VER='202611121347';
 (function(){ async function chk(){ try{ if(APP_VER.startsWith('__')) return; const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json();
     if(v && v.v && String(v.v)>APP_VER){ const b=document.getElementById('updBar'); if(b){ b.querySelector('.upd-n').textContent=v.notas?(' · '+v.notas):''; b.hidden=false } } }catch(e){} }
   document.addEventListener('click',e=>{ if(!e.target.closest?.('#updBtn')) return; e.preventDefault(); const bt=document.getElementById('updBtn'); if(bt){ bt.disabled=true; bt.textContent='Actualizando…' }
